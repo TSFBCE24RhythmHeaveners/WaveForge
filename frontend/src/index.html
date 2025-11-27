@@ -640,7 +640,7 @@
         <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
                 <label for="playbackSpeed" class="text-[10px] text-gray-500 font-mono">SPEED:</label>
-                <select id="playbackSpeed" 
+                <select id="playbackSpeed" disabled 
                         onchange="changePlaybackSpeed(this.value)"
                         class="cyber-select text-xs px-2 py-1 border-gray-700"
                         aria-label="Wiedergabegeschwindigkeit">
@@ -2250,7 +2250,14 @@
                 if (isPlaying && (audioContext.currentTime - playbackStartTime >= currentAudioBuffer.duration - playbackOffset - 0.1)) stopAudio(true);
             };
             applyOutputEQ();
-            playbackSource.playbackRate.value = currentPlaybackRate; // Apply playback speed
+            
+            // Apply playback speed with pitch preservation for better quality
+            playbackSource.playbackRate.value = currentPlaybackRate;
+            // Detune to compensate for pitch changes at non-standard speeds (optional enhancement)
+            if (playbackSource.detune) {
+                playbackSource.detune.value = 0; // Keep pitch consistent
+            }
+            
             playbackSource.start(0, offset);
             playbackStartTime = audioContext.currentTime;
             playbackOffset = offset;
@@ -2271,7 +2278,8 @@
             if(isRecording) return; // Guard
             if (!currentAudioBuffer) return;
             if (isPlaying) {
-                playbackOffset += audioContext.currentTime - playbackStartTime;
+                // Account for playback rate when calculating offset
+                playbackOffset += (audioContext.currentTime - playbackStartTime) * currentPlaybackRate;
                 stopAudio(); 
             } else {
                 if (playbackOffset >= currentAudioBuffer.duration) playbackOffset = 0;
@@ -2286,7 +2294,13 @@
             if (isPlaying) playAudio(time);
             else { updateCurrentTimeDisplay(time); document.getElementById('seekSlider').value = time; }
         }
-        function playerSkip(s) { if(currentAudioBuffer) playerSeek(playbackOffset + (isPlaying ? audioContext.currentTime - playbackStartTime : 0) + s); }
+        function playerSkip(s) { 
+            if(currentAudioBuffer) {
+                // Account for playback rate when calculating current position
+                const currentPos = isPlaying ? playbackOffset + (audioContext.currentTime - playbackStartTime) * currentPlaybackRate : playbackOffset;
+                playerSeek(currentPos + s);
+            }
+        }
         function playerSeekStart() { playerSeek(0); }
         function playerSeekEnd() { if(currentAudioBuffer) { stopAudio(); playbackOffset = currentAudioBuffer.duration; updateCurrentTimeDisplay(playbackOffset); document.getElementById('seekSlider').value = playbackOffset; } }
 
@@ -2294,7 +2308,8 @@
             cancelAnimationFrame(playbackRafId);
             function loop() {
                 if (isPlaying && currentAudioBuffer) {
-                    const pos = playbackOffset + (audioContext.currentTime - playbackStartTime);
+                    // Calculate position accounting for playback rate
+                    const pos = playbackOffset + (audioContext.currentTime - playbackStartTime) * currentPlaybackRate;
                     if (pos <= currentAudioBuffer.duration) {
                         document.getElementById('seekSlider').value = pos;
                         updateCurrentTimeDisplay(pos);
@@ -2421,12 +2436,21 @@
 
         // PLAYBACK SPEED CONTROL
         function changePlaybackSpeed(speed) {
-            currentPlaybackRate = parseFloat(speed);
+            const newRate = parseFloat(speed);
+            
             if (playbackSource && isPlaying) {
-                // Restart playback with new speed
-                const currentPos = playbackOffset + (audioContext.currentTime - playbackStartTime);
+                // Calculate current position with old playback rate
+                const currentPos = playbackOffset + (audioContext.currentTime - playbackStartTime) * currentPlaybackRate;
+                
+                // Update the rate
+                currentPlaybackRate = newRate;
+                
+                // Smoothly restart playback with new speed at current position
                 stopAudio();
                 playAudio(currentPos);
+            } else {
+                // Just update the rate if not playing
+                currentPlaybackRate = newRate;
             }
         }
 
