@@ -33,13 +33,26 @@
 
 ### Prerequisites
 - **Python 3.13+** installed
+- **uv** package manager (installs automatically if not present)
 - **Git** for cloning the repository
+
+> **Note:** The start script will automatically install `uv` if it's not found. Alternatively, you can install it manually:
+> ```bash
+> # macOS/Linux
+> curl -LsSf https://astral.sh/uv/install.sh | sh
+> 
+> # Or with pip
+> pip install uv
+> 
+> # Or with cargo
+> cargo install uv
+> ```
 
 ### Installation
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/yourusername/waveforge-pro.git
+git clone https://github.com/bmaier/waveforge.git
 cd waveforge-pro
 ```
 
@@ -172,7 +185,7 @@ cd waveforge-pro
 2. **Install test dependencies:**
 ```bash
 source .venv/bin/activate
-pip install -r tests/requirements-test.txt
+uv pip install -r tests/requirements-test.txt
 ```
 
 3. **Install Playwright browsers:**

@@ -29,11 +29,26 @@ fi
 PYTHON_VERSION=$(python3 --version | awk '{print $2}')
 echo -e "${GREEN}✓ Python version: $PYTHON_VERSION${NC}"
 
-# Check if virtual environment exists in project root
-if [ ! -d ".venv" ]; then
+# Check if uv is installed
+if ! command -v uv &> /dev/null; then
     echo ""
-    echo -e "${YELLOW}📦 Creating virtual environment...${NC}"
-    python3 -m venv .venv
+    echo -e "${RED}❌ uv is not installed. Installing uv...${NC}"
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    echo -e "${GREEN}✓ uv installed${NC}"
+    echo -e "${YELLOW}ℹ Please restart your terminal and run this script again${NC}"
+    exit 0
+fi
+
+echo -e "${GREEN}✓ uv package manager: $(uv --version)${NC}"
+
+# Create virtual environment and install dependencies with uv
+echo ""
+echo -e "${YELLOW}📦 Setting up environment with uv...${NC}"
+
+# Check if virtual environment exists
+if [ ! -d ".venv" ]; then
+    echo -e "${YELLOW}→ Creating virtual environment...${NC}"
+    uv venv
     echo -e "${GREEN}✓ Virtual environment created${NC}"
 fi
 
@@ -42,13 +57,17 @@ echo ""
 echo -e "${YELLOW}🔧 Activating virtual environment...${NC}"
 source .venv/bin/activate
 
-# Install/upgrade dependencies
+# Install dependencies with uv
 echo ""
 echo -e "${YELLOW}📥 Installing dependencies...${NC}"
-pip install -q --upgrade pip
-pip install -q -r backend/requirements.txt
 
-echo -e "${GREEN}✓ Dependencies installed${NC}"
+if [ -f "backend/requirements.txt" ]; then
+    uv pip install -r backend/requirements.txt
+    echo -e "${GREEN}✓ Dependencies installed${NC}"
+else
+    echo -e "${RED}❌ backend/requirements.txt not found${NC}"
+    exit 1
+fi
 
 # Create necessary directories
 echo ""

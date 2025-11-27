@@ -1,0 +1,14 @@
+[project]
+name = "waveforge-pro"
+version = "1.0.0"
+description = "Professional browser-based DAW with crash recovery"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

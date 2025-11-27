@@ -5,15 +5,20 @@ FROM python:3.13-slim as builder
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and uv
 RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
-    && rm -rf /var/lib/apt/lists/*
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Copy requirements and install Python dependencies
+# Add uv to PATH
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# Copy requirements and install Python dependencies with uv (much faster than pip)
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
 # Stage 2: Runtime stage
 FROM python:3.13-slim

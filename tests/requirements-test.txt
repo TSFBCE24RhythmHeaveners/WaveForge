@@ -1,5 +1,5 @@
-# Test Dependencies for WaveForge Pro
-# Install with: pip install -r requirements-test.txt
+# Test dependencies for WaveForge Pro
+# Install with: uv pip install -r requirements-test.txt
 
 # Testing Frameworks
 pytest==8.0.0
