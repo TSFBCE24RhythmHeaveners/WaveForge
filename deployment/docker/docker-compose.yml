@@ -10,10 +10,20 @@ services:
       - "8000:8000"
     volumes:
       - uploaded-data:/app/backend/uploaded_data
+      - tus-uploads:/app/backend/uploaded_data/tus_uploads
+      - tus-sessions:/app/backend/uploaded_data/tus_sessions
     environment:
       - HOST=0.0.0.0
       - PORT=8000
       - UPLOAD_DIR=/app/backend/uploaded_data
+      - TUS_ENABLED=true
+      - TUS_MAX_SIZE=10737418240
+      - TUS_CHUNK_SIZE=524288
+      - TUS_EXPIRATION=86400
+      - TUS_UPLOAD_DIR=/app/backend/uploaded_data/tus_uploads
+      - TUS_SESSION_DIR=/app/backend/uploaded_data/tus_sessions
+      - TUS_TEMP_DIR=/app/backend/uploaded_data/tus_temp
+      - DEFAULT_UPLOAD_METHOD=tus
     restart: unless-stopped
     networks:
       - waveforge-network
@@ -26,6 +36,10 @@ services:
 
 volumes:
   uploaded-data:
+    driver: local
+  tus-uploads:
+    driver: local
+  tus-sessions:
     driver: local
 
 networks:

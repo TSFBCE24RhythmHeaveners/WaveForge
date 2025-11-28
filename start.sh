@@ -72,10 +72,14 @@ fi
 # Create necessary directories
 echo ""
 echo -e "${YELLOW}📁 Creating necessary directories...${NC}"
-mkdir -p backend/uploaded_data
+mkdir -p backend/uploaded_data/temp
+mkdir -p backend/uploaded_data/completed
+mkdir -p backend/uploaded_data/tus_uploads
+mkdir -p backend/uploaded_data/tus_sessions
+mkdir -p backend/uploaded_data/tus_temp
 mkdir -p frontend/public
 
-echo -e "${GREEN}✓ Directories ready${NC}"
+echo -e "${GREEN}✓ Directories ready (including TUS upload storage)${NC}"
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}  🚀 Server starting on: http://localhost:8000${NC}"

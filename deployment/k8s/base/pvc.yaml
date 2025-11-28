@@ -12,3 +12,35 @@ spec:
     requests:
       storage: 10Gi
   storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: waveforge-tus-uploads-pvc
+  namespace: waveforge-pro
+  labels:
+    app: waveforge-pro
+    component: tus-uploads
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: waveforge-tus-sessions-pvc
+  namespace: waveforge-pro
+  labels:
+    app: waveforge-pro
+    component: tus-sessions
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard

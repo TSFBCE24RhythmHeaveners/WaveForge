@@ -40,7 +40,11 @@ COPY backend/pyproject.toml /app/backend/
 COPY frontend /app/frontend
 
 # Create upload directories
-RUN mkdir -p /app/backend/uploaded_data/temp /app/backend/uploaded_data/completed
+RUN mkdir -p /app/backend/uploaded_data/temp \
+    /app/backend/uploaded_data/completed \
+    /app/backend/uploaded_data/tus_uploads \
+    /app/backend/uploaded_data/tus_sessions \
+    /app/backend/uploaded_data/tus_temp
 
 # Create non-root user
 RUN useradd -m -u 1000 waveforge && \

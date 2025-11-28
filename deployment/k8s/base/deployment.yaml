@@ -32,6 +32,46 @@ spec:
           value: "0.0.0.0"
         - name: UPLOAD_DIR
           value: "/app/data/uploaded_data"
+        - name: TUS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: waveforge-config
+              key: TUS_ENABLED
+        - name: TUS_MAX_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: waveforge-config
+              key: TUS_MAX_SIZE
+        - name: TUS_CHUNK_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: waveforge-config
+              key: TUS_CHUNK_SIZE
+        - name: TUS_EXPIRATION
+          valueFrom:
+            configMapKeyRef:
+              name: waveforge-config
+              key: TUS_EXPIRATION
+        - name: TUS_UPLOAD_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: waveforge-config
+              key: TUS_UPLOAD_DIR
+        - name: TUS_SESSION_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: waveforge-config
+              key: TUS_SESSION_DIR
+        - name: TUS_TEMP_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: waveforge-config
+              key: TUS_TEMP_DIR
+        - name: DEFAULT_UPLOAD_METHOD
+          valueFrom:
+            configMapKeyRef:
+              name: waveforge-config
+              key: DEFAULT_UPLOAD_METHOD
         resources:
           requests:
             memory: "256Mi"
@@ -58,10 +98,25 @@ spec:
         volumeMounts:
         - name: uploaded-data
           mountPath: /app/data/uploaded_data
+        - name: tus-uploads
+          mountPath: /app/data/tus_uploads
+        - name: tus-sessions
+          mountPath: /app/data/tus_sessions
+        - name: tus-temp
+          mountPath: /app/data/tus_temp
       volumes:
       - name: uploaded-data
         persistentVolumeClaim:
           claimName: waveforge-pvc
+      - name: tus-uploads
+        persistentVolumeClaim:
+          claimName: waveforge-tus-uploads-pvc
+      - name: tus-sessions
+        persistentVolumeClaim:
+          claimName: waveforge-tus-sessions-pvc
+      - name: tus-temp
+        emptyDir:
+          sizeLimit: 5Gi
 ---
 apiVersion: v1
 kind: Service

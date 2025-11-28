@@ -18,6 +18,16 @@ data:
   MAX_UPLOAD_SIZE: "104857600"  # 100MB
   CHUNK_SIZE: "1048576"          # 1MB
   
+  # TUS Upload Protocol configuration
+  TUS_ENABLED: "true"
+  TUS_MAX_SIZE: "10737418240"    # 10GB max file size
+  TUS_CHUNK_SIZE: "524288"       # 512KB sub-chunks
+  TUS_EXPIRATION: "86400"        # 24 hours session expiration
+  TUS_UPLOAD_DIR: "/app/data/tus_uploads"
+  TUS_SESSION_DIR: "/app/data/tus_sessions"
+  TUS_TEMP_DIR: "/app/data/tus_temp"
+  DEFAULT_UPLOAD_METHOD: "tus"   # tus or custom
+  
   # CORS configuration (update as needed)
   CORS_ORIGINS: "*"
   
