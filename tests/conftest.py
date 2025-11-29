@@ -4,8 +4,10 @@ import pytest
 import sys
 from pathlib import Path
 
-# Add backend to Python path
+# Add backend and backend/app to Python path
 backend_path = Path(__file__).parent.parent / "backend"
+backend_app_path = backend_path / "app"
+sys.path.insert(0, str(backend_app_path))
 sys.path.insert(0, str(backend_path))
 
 

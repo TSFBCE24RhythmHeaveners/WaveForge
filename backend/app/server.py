@@ -12,8 +12,8 @@ from fastapi.responses import JSONResponse, FileResponse
 from pathlib import Path
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# Import TUS Upload Router
-from routes import tus_upload
+# Import routers
+from app.routes import tus_upload, recording_complete
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -45,8 +45,9 @@ app.add_middleware(
     allowed_hosts=ALLOWED_HOSTS
 )
 
-# Include TUS Upload Router
+# Include routers
 app.include_router(tus_upload.router, tags=["TUS Upload"])
+app.include_router(recording_complete.router, tags=["Recording"])
 
 # 2. CORS Configuration
 app.add_middleware(
