@@ -2890,16 +2890,25 @@
                 tempBlob = null; // Clear tempBlob after successful save
                 const savedSessionId = currentSessionId; // Store sessionId before resetting
                 currentSessionId = null; // Reset session ID
+                
+                // Load tracks and close modal
                 loadTracksFromDB();
                 closeSaveModal();
                 
-                // CRITICAL: Trigger UI update AFTER playlist is rendered
-                // This ensures the DOM elements exist before we try to update them
+                // CRITICAL: Trigger UI update AFTER dialog is closed AND playlist is rendered
+                // Multiple timeouts to ensure DOM is ready and dialog animation is complete
                 if (savedSessionId && typeof UploadCoordinator !== 'undefined') {
+                    // First update after dialog close animation (200ms) + rendering time
                     setTimeout(() => {
-                        console.log(`🎨 Triggering UI update for session: ${savedSessionId}`);
+                        console.log(`🎨 [1st attempt] Triggering UI update for session: ${savedSessionId}`);
                         UploadCoordinator.updateUI(savedSessionId);
-                    }, 100);
+                    }, 250);
+                    
+                    // Second update as backup to ensure it's visible
+                    setTimeout(() => {
+                        console.log(`🎨 [2nd attempt] Triggering UI update for session: ${savedSessionId}`);
+                        UploadCoordinator.updateUI(savedSessionId);
+                    }, 500);
                 }
             };
 
@@ -3495,12 +3504,20 @@
             // CRITICAL: After rendering all items, update UI for ALL active uploads
             // This ensures the upload status boxes are expanded immediately
             if (typeof UploadCoordinator !== 'undefined' && UploadCoordinator.activeUploads.size > 0) {
+                // Multiple updates to ensure box appears (DOM needs time to settle)
                 setTimeout(() => {
-                    console.log(`🎨 Updating UI for ${UploadCoordinator.activeUploads.size} active uploads after playlist render`);
+                    console.log(`🎨 [renderPlaylist 1st] Updating UI for ${UploadCoordinator.activeUploads.size} active uploads`);
                     for (const sessionId of UploadCoordinator.activeUploads.keys()) {
                         UploadCoordinator.updateUI(sessionId);
                     }
-                }, 30);
+                }, 50);
+                
+                setTimeout(() => {
+                    console.log(`🎨 [renderPlaylist 2nd] Updating UI for ${UploadCoordinator.activeUploads.size} active uploads`);
+                    for (const sessionId of UploadCoordinator.activeUploads.keys()) {
+                        UploadCoordinator.updateUI(sessionId);
+                    }
+                }, 150);
             }
         }
 
