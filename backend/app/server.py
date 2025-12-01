@@ -13,7 +13,7 @@ from pathlib import Path
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Import routers
-from app.routes import tus_upload, recording_complete
+from routes import tus_upload, recording_complete
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
