@@ -934,14 +934,15 @@
 
     <!-- SAVE MODAL -->
     <div id="saveModal" class="modal-overlay" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="saveModalTitle">
-            <h2 id="saveModalTitle" class="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">SAVE
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="saveModalTitle" aria-describedby="saveModalDesc">
+            <h2 id="saveModalTitle" class="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2" tabindex="0">SAVE
                 SEQUENCE</h2>
+            <p id="saveModalDesc" class="sr-only">Geben Sie einen Namen für Ihre Aufnahme ein und speichern Sie diese in der lokalen Datenbank.</p>
             <div class="mb-4">
                 <label for="saveNameInput" class="block text-gray-400 text-xs mb-1">NAME</label>
                 <input type="text" id="saveNameInput"
                     class="w-full bg-black/50 border border-gray-700 rounded p-2 text-white focus:border-cyan-400 outline-none"
-                    placeholder="Enter sequence name..." aria-label="Sequenzname eingeben" aria-required="true">
+                    placeholder="Enter sequence name..." aria-label="Sequenzname eingeben" aria-required="true" tabindex="0">
             </div>
             <div class="mb-6">
                 <label class="block text-gray-400 text-xs mb-1">SELECTED FORMAT</label>
@@ -951,10 +952,10 @@
             </div>
             <div class="flex gap-3 justify-end">
                 <button onclick="closeSaveModal()" class="px-4 py-2 rounded text-gray-400 hover:bg-white/10 text-sm"
-                    aria-label="Verwerfen und schließen" type="button">DISCARD</button>
+                    aria-label="Verwerfen und schließen" type="button" tabindex="0">DISCARD</button>
                 <button onclick="confirmSave()"
                     class="px-6 py-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-sm shadow-[0_0_15px_rgba(0,243,255,0.4)]"
-                    aria-label="In Datenbank speichern" type="button">SAVE TO DB</button>
+                    aria-label="In Datenbank speichern" type="button" tabindex="0">SAVE TO DB</button>
             </div>
             <div id="processingIndicator" class="hidden mt-4 text-center text-xs text-pink-400 animate-pulse">PROCESSING
                 AUDIO... PLEASE WAIT</div>
@@ -963,12 +964,12 @@
 
     <!-- RECOVERY MODAL -->
     <div id="recoveryModal" class="modal-overlay recovery-modal" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="recoveryModalTitle">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="recoveryModalTitle" aria-describedby="recoveryModalDesc">
             <h2 id="recoveryModalTitle"
-                class="text-xl font-bold text-red-500 mb-4 border-b border-red-900 pb-2 flex items-center gap-2">
+                class="text-xl font-bold text-red-500 mb-4 border-b border-red-900 pb-2 flex items-center gap-2" tabindex="0">
                 <span class="animate-pulse" aria-hidden="true">⚠</span> SYSTEM ALERT
             </h2>
-            <p class="text-sm text-gray-300 mb-4">
+            <p id="recoveryModalDesc" class="text-sm text-gray-300 mb-4">
                 The system detected a crash or unexpected closure during an active recording session. RAID fragments
                 have been recovered.
             </p>
@@ -987,10 +988,10 @@
             <div class="flex gap-3 justify-end">
                 <button onclick="CrashGuard.discardSession()"
                     class="px-4 py-2 rounded text-gray-400 hover:text-red-400 hover:bg-red-900/20 text-sm"
-                    aria-label="Wiederherstellungsdaten löschen" type="button">PURGE DATA</button>
+                    aria-label="Wiederherstellungsdaten löschen" type="button" tabindex="0">PURGE DATA</button>
                 <button onclick="CrashGuard.assembleSession(null, true)"
                     class="recovery-btn px-6 py-2 rounded font-bold text-sm shadow-[0_0_15px_rgba(255,51,51,0.4)]"
-                    aria-label="Sitzung wiederherstellen und speichern" type="button">RESTORE & SAVE</button>
+                    aria-label="Sitzung wiederherstellen und speichern" type="button" tabindex="0">RESTORE & SAVE</button>
             </div>
         </div>
     </div>
@@ -998,18 +999,19 @@
     <!-- UPLOAD SETTINGS MODAL -->
     <div id="uploadSettingsModal" class="modal-overlay license-modal" aria-hidden="true" style="display: none;">
         <div class="modal-content text-gray-200 font-sans max-w-md w-full" role="dialog" aria-modal="true"
-            aria-labelledby="uploadSettingsModalTitle">
+            aria-labelledby="uploadSettingsModalTitle" aria-describedby="uploadSettingsDesc">
             <div class="flex justify-between items-start mb-6 pb-3 border-b border-gray-700">
                 <h2 id="uploadSettingsModalTitle" class="text-xl font-bold font-mono tracking-widest text-cyan-400"
-                    data-i18n="modal.uploadSettings">
+                    data-i18n="modal.uploadSettings" tabindex="0">
                     UPLOAD SETTINGS
                 </h2>
                 <button onclick="closeUploadSettingsModal()"
                     class="text-gray-500 hover:text-white text-2xl leading-none" aria-label="Schließen"
-                    data-i18n-attr="aria-label:ui.close" type="button">&times;</button>
+                    data-i18n-attr="aria-label:ui.close" type="button" tabindex="0">&times;</button>
             </div>
 
             <div class="mb-6">
+                <p id="uploadSettingsDesc" class="sr-only">Wählen Sie die Upload-Methode für Ihre Aufnahmen. TUS unterstützt das Fortsetzen unterbrochener Uploads.</p>
                 <h3 class="font-bold text-gray-200 mb-3" data-i18n="upload.method">Transfer Method</h3>
                 <p class="text-sm text-gray-400 mb-4" data-i18n="upload.desc">
                     Choose the file upload method. TUS allows resuming interrupted uploads.
@@ -1039,12 +1041,12 @@
 
             <div class="flex justify-end gap-3 pt-3 border-t border-gray-700">
                 <button onclick="closeUploadSettingsModal()"
-                    class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors" data-i18n="ui.close">
+                    class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors" data-i18n="ui.close" tabindex="0">
                     Close
                 </button>
                 <button onclick="saveUploadSettings()"
                     class="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-500 text-white rounded font-bold transition-colors"
-                    data-i18n="ui.save">
+                    data-i18n="ui.save" tabindex="0">
                     Save
                 </button>
             </div>
@@ -1356,6 +1358,120 @@
                 </div>
             </div>
 
+            <!-- OPEN SOURCE DEPENDENCIES -->
+            <div class="mt-6 bg-gray-800/30 border border-gray-700 p-4 rounded">
+                <h3 class="font-bold text-gray-200 uppercase tracking-wide text-sm border-b border-gray-700 pb-2 mb-4">
+                    Open Source Abhängigkeiten & Lizenzen</h3>
+                
+                <p class="text-xs text-gray-400 mb-4">WaveForge Pro verwendet die folgenden Open-Source-Bibliotheken und Komponenten:</p>
+                
+                <!-- Scrollable Dependencies List -->
+                <div class="max-h-64 overflow-y-auto bg-black/30 border border-gray-700 rounded p-3 space-y-3">
+                    
+                    <!-- Frontend Libraries -->
+                    <div class="border-b border-gray-700 pb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">Tailwind CSS</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-700">MIT License</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">Utility-first CSS framework</p>
+                        <a href="https://tailwindcss.com/" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://tailwindcss.com/</a>
+                    </div>
+                    
+                    <div class="border-b border-gray-700 pb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">TUS JavaScript Client</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-700">MIT License</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">Resumable file upload protocol</p>
+                        <a href="https://github.com/tus/tus-js-client" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://github.com/tus/tus-js-client</a>
+                    </div>
+
+                    <!-- Backend Dependencies -->
+                    <div class="border-b border-gray-700 pb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">FastAPI</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-700">MIT License</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">Modern, fast web framework for Python</p>
+                        <a href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://fastapi.tiangolo.com/</a>
+                    </div>
+                    
+                    <div class="border-b border-gray-700 pb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">Uvicorn</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-700">BSD-3-Clause</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">ASGI web server implementation for Python</p>
+                        <a href="https://www.uvicorn.org/" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://www.uvicorn.org/</a>
+                    </div>
+                    
+                    <div class="border-b border-gray-700 pb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">tusd (TUS Server)</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-700">MIT License</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">Reference implementation of TUS protocol server</p>
+                        <a href="https://github.com/tus/tusd" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://github.com/tus/tusd</a>
+                    </div>
+
+                    <!-- Web APIs -->
+                    <div class="border-b border-gray-700 pb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">Web Audio API</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-green-900/30 text-green-400 rounded border border-green-700">W3C Standard</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">Browser-native audio processing</p>
+                        <a href="https://www.w3.org/TR/webaudio/" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://www.w3.org/TR/webaudio/</a>
+                    </div>
+                    
+                    <div class="border-b border-gray-700 pb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">MediaRecorder API</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-green-900/30 text-green-400 rounded border border-green-700">W3C Standard</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">Browser-native media recording</p>
+                        <a href="https://www.w3.org/TR/mediastream-recording/" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://www.w3.org/TR/mediastream-recording/</a>
+                    </div>
+                    
+                    <div class="border-b border-gray-700 pb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">IndexedDB API</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-green-900/30 text-green-400 rounded border border-green-700">W3C Standard</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">Browser-native database for offline storage</p>
+                        <a href="https://www.w3.org/TR/IndexedDB/" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://www.w3.org/TR/IndexedDB/</a>
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-gray-200 text-xs">Service Worker API</h4>
+                            <span class="text-[10px] px-2 py-0.5 bg-green-900/30 text-green-400 rounded border border-green-700">W3C Standard</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mb-1">Background sync and offline capabilities</p>
+                        <a href="https://www.w3.org/TR/service-workers/" target="_blank" rel="noopener noreferrer" 
+                           class="text-[10px] text-cyan-400 hover:underline">https://www.w3.org/TR/service-workers/</a>
+                    </div>
+                    
+                </div>
+                
+                <div class="mt-3 pt-3 border-t border-gray-700">
+                    <p class="text-[10px] text-gray-400">
+                        <strong class="text-gray-300">Hinweis:</strong> Alle genannten Bibliotheken und Standards werden 
+                        gemäß ihren jeweiligen Lizenzbedingungen verwendet. Vollständige Lizenztexte finden Sie in den 
+                        entsprechenden Repositories oder auf den verlinkten Websites.
+                    </p>
+                </div>
+            </div>
+
             <!-- FOOTER -->
             <div class="mt-8 text-center pt-4 border-t border-gray-800">
                 <p class="text-[10px] text-gray-500 font-mono mb-2">© 2025 Nina Ennekes. All Rights Reserved.</p>
@@ -1369,12 +1485,12 @@
 
     <!-- DELETE CONFIRMATION MODAL -->
     <div id="deleteModal" class="modal-overlay delete-modal" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle" aria-describedby="deleteModalDesc">
             <h2 id="deleteModalTitle"
-                class="text-xl font-bold text-red-500 mb-4 border-b border-red-900 pb-2 flex items-center gap-2">
+                class="text-xl font-bold text-red-500 mb-4 border-b border-red-900 pb-2 flex items-center gap-2" tabindex="0">
                 <span aria-hidden="true">⚠</span> DELETE RECORDING
             </h2>
-            <p class="text-sm text-gray-300 mb-4">
+            <p id="deleteModalDesc" class="text-sm text-gray-300 mb-4">
                 Are you sure you want to delete this recording?
             </p>
 
@@ -1385,9 +1501,9 @@
 
             <div class="flex gap-3 justify-end">
                 <button onclick="closeDeleteModal()" class="cancel-btn text-sm" aria-label="Abbrechen"
-                    type="button">CANCEL</button>
+                    type="button" tabindex="0">CANCEL</button>
                 <button onclick="confirmDelete()" class="delete-btn text-sm" aria-label="Löschen bestätigen"
-                    type="button">DELETE</button>
+                    type="button" tabindex="0">DELETE</button>
             </div>
         </div>
     </div>
@@ -1501,21 +1617,90 @@
             }, 3000);
         }
 
+        // === MODAL ACCESSIBILITY: Focus Trap & ESC Key Handler (BITV 2.0) ===
+        let lastFocusedElement = null;
+        
+        /**
+         * Traps focus within a modal dialog for keyboard navigation
+         * @param {HTMLElement} modalElement - The modal container element
+         */
+        function trapFocus(modalElement) {
+            const focusableElements = modalElement.querySelectorAll(
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            );
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            modalElement.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    if (e.shiftKey) {
+                        // Shift + Tab
+                        if (document.activeElement === firstElement) {
+                            e.preventDefault();
+                            lastElement.focus();
+                        }
+                    } else {
+                        // Tab
+                        if (document.activeElement === lastElement) {
+                            e.preventDefault();
+                            firstElement.focus();
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Global ESC key handler for all modals
+         */
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                // Check which modal is currently open and close it
+                const saveModal = document.getElementById('saveModal');
+                const recoveryModal = document.getElementById('recoveryModal');
+                const deleteModal = document.getElementById('deleteModal');
+                const infoModal = document.getElementById('infoModal');
+                const uploadSettingsModal = document.getElementById('uploadSettingsModal');
+
+                if (saveModal && saveModal.style.display === 'flex') {
+                    closeSaveModal();
+                } else if (recoveryModal && recoveryModal.style.display === 'flex') {
+                    // Recovery modal should not be closeable with ESC (critical action)
+                    console.log('Recovery modal cannot be closed with ESC key');
+                } else if (deleteModal && deleteModal.style.display === 'flex') {
+                    closeDeleteModal();
+                } else if (infoModal && infoModal.style.display === 'flex') {
+                    closeInfoModal();
+                } else if (uploadSettingsModal && uploadSettingsModal.style.display === 'flex') {
+                    closeUploadSettingsModal();
+                }
+            }
+        });
+
         const infoModal = document.getElementById('infoModal');
         function openInfoModal() {
+            lastFocusedElement = document.activeElement; // Save current focus
             infoModal.style.display = 'flex';
             infoModal.setAttribute('aria-hidden', 'false');
             setTimeout(() => {
                 infoModal.classList.add('modal-open');
-                // Focus first focusable element in modal
-                const firstFocusable = infoModal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-                if (firstFocusable) firstFocusable.focus();
+                trapFocus(infoModal); // Enable focus trap
+                // Focus modal title for screen readers
+                const modalTitle = infoModal.querySelector('#infoModalTitle');
+                if (modalTitle) modalTitle.focus();
             }, 10);
         }
         function closeInfoModal() {
             infoModal.classList.remove('modal-open');
             infoModal.setAttribute('aria-hidden', 'true');
-            setTimeout(() => infoModal.style.display = 'none', 200);
+            setTimeout(() => {
+                infoModal.style.display = 'none';
+                // Restore focus to element that opened the modal
+                if (lastFocusedElement) {
+                    lastFocusedElement.focus();
+                    lastFocusedElement = null;
+                }
+            }, 200);
         }
 
         function updateFormatWarning() {
@@ -3074,6 +3259,7 @@
         const nameInput = document.getElementById('saveNameInput');
         function openSaveModal(isRecovery = false) {
             if (!tempBlob || tempBlob.size === 0) return;
+            lastFocusedElement = document.activeElement; // Save current focus
             nameInput.value = isRecovery ? `RECOVERED ${new Date().toLocaleTimeString()}` : `Sequence ${new Date().toLocaleTimeString()}`;
             nameInput.style.borderColor = isRecovery ? 'var(--neon-red)' : '#374151';
 
@@ -3088,13 +3274,22 @@
             modal.setAttribute('aria-hidden', 'false');
             setTimeout(() => {
                 modal.classList.add('modal-open');
+                trapFocus(modal); // Enable focus trap
                 nameInput.focus();
             }, 10);
         }
         function closeSaveModal() {
             modal.classList.remove('modal-open');
             modal.setAttribute('aria-hidden', 'true');
-            setTimeout(() => { modal.style.display = 'none'; document.getElementById('processingIndicator').classList.add('hidden'); }, 200);
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.getElementById('processingIndicator').classList.add('hidden');
+                // Restore focus
+                if (lastFocusedElement) {
+                    lastFocusedElement.focus();
+                    lastFocusedElement = null;
+                }
+            }, 200);
         }
 
         async function confirmSave() {
@@ -3526,12 +3721,19 @@
 
         // DELETE MODAL FUNCTIONS
         function openDeleteModal(trackId, trackName) {
+            lastFocusedElement = document.activeElement; // Save current focus
             deleteModal = document.getElementById('deleteModal');
             trackToDelete = trackId;
             document.getElementById('deleteRecordingName').textContent = trackName;
             deleteModal.style.display = 'flex';
             deleteModal.classList.add('modal-open');
             deleteModal.setAttribute('aria-hidden', 'false');
+            setTimeout(() => {
+                trapFocus(deleteModal); // Enable focus trap
+                // Focus modal title
+                const modalTitle = deleteModal.querySelector('#deleteModalTitle');
+                if (modalTitle) modalTitle.focus();
+            }, 10);
         }
 
         function closeDeleteModal() {
@@ -3540,6 +3742,11 @@
                 deleteModal.classList.remove('modal-open');
                 deleteModal.setAttribute('aria-hidden', 'true');
                 trackToDelete = null;
+                // Restore focus
+                if (lastFocusedElement) {
+                    lastFocusedElement.focus();
+                    lastFocusedElement = null;
+                }
             }
         }
 
@@ -3973,6 +4180,7 @@
 
         // Upload Settings Logic
         function openUploadSettingsModal() {
+            lastFocusedElement = document.activeElement; // Save current focus
             const modal = document.getElementById('uploadSettingsModal');
             modal.style.display = 'flex';
             modal.setAttribute('aria-hidden', 'false');
@@ -3982,15 +4190,23 @@
             const radio = document.querySelector(`input[name="uploadMethod"][value="${currentMethod}"]`);
             if (radio) radio.checked = true;
 
-            // Trap focus
-            const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-            if (firstFocusable) firstFocusable.focus();
+            setTimeout(() => {
+                trapFocus(modal); // Enable focus trap
+                // Focus modal title
+                const modalTitle = modal.querySelector('#uploadSettingsModalTitle');
+                if (modalTitle) modalTitle.focus();
+            }, 10);
         }
 
         function closeUploadSettingsModal() {
             const modal = document.getElementById('uploadSettingsModal');
             modal.style.display = 'none';
             modal.setAttribute('aria-hidden', 'true');
+            // Restore focus
+            if (lastFocusedElement) {
+                lastFocusedElement.focus();
+                lastFocusedElement = null;
+            }
         }
 
         function saveUploadSettings() {
