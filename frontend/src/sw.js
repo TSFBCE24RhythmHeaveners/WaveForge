@@ -8,7 +8,7 @@ const MAX_RETRY_DELAY = 60000; // 60 seconds
 const MAX_CONSECUTIVE_FAILURES = 10; // After 10 failures, increase delay significantly
 
 // Connection Check Configuration
-const CONNECTION_CHECK_INTERVAL = 5000; // Check connection every 5 seconds when offline
+const CONNECTION_CHECK_INTERVAL = 1000; // Check connection every 1 second when offline (fast resume)
 let isOffline = false; // Track offline state
 let connectionCheckInterval = null; // Connection check timer
 let isProcessingUploads = false; // Prevent concurrent upload processing
@@ -153,7 +153,7 @@ async function checkServerConnection() {
 function startConnectionCheck() {
     if (connectionCheckInterval) return; // Already running
     
-    console.log('[SW] 🔴 Starting connection check (every 5 seconds)');
+    console.log('[SW] 🔴 Starting connection check (every 1 second)');
     connectionCheckInterval = setInterval(async () => {
         console.log('[SW] 🔍 Checking server connection...');
         const online = await checkServerConnection();
@@ -600,7 +600,13 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    console.log('[SW] 🚀 Service Worker activated - checking for pending uploads');
+    event.waitUntil(
+        self.clients.claim().then(() => {
+            // Immediately process pending uploads when Service Worker activates
+            return processUploads();
+        })
+    );
 });
 
 self.addEventListener('sync', (event) => {

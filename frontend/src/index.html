@@ -1888,13 +1888,14 @@
                     
                     console.log(`✅ Loaded ${Object.keys(sessionChunks).length} pending uploads`);
                     
-                    // Trigger UI update for all active uploads
-                    // Small delay to ensure DOM is ready
+                    // Trigger UI update for all active uploads IMMEDIATELY
+                    // Reduced delay for faster visual feedback
                     setTimeout(() => {
+                        console.log(`🎨 Triggering UI update for ${this.activeUploads.size} pending uploads`);
                         for (const sessionId of this.activeUploads.keys()) {
                             this.updateUI(sessionId);
                         }
-                    }, 100);
+                    }, 50);
                     
                 } catch (err) {
                     console.error('Error loading pending uploads:', err);
@@ -2868,6 +2869,7 @@
                         // Register upload with total chunks BEFORE rendering playlist
                         if (typeof UploadCoordinator !== 'undefined' && totalChunks > 0) {
                             UploadCoordinator.registerUpload(savedSessionId, 'custom', totalChunks);
+                            console.log(`📦 Upload registered immediately for ${savedSessionId}`);
                         }
                     };
                     
@@ -2897,7 +2899,7 @@
                     setTimeout(() => {
                         console.log(`🎨 Triggering UI update for session: ${savedSessionId}`);
                         UploadCoordinator.updateUI(savedSessionId);
-                    }, 200);
+                    }, 100);
                 }
             };
 
@@ -3498,7 +3500,7 @@
                     for (const sessionId of UploadCoordinator.activeUploads.keys()) {
                         UploadCoordinator.updateUI(sessionId);
                     }
-                }, 50);
+                }, 30);
             }
         }
 
