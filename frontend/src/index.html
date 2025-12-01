@@ -478,6 +478,56 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--neon-cyan);
         }
+
+        /* Upload Status Badges */
+        .upload-status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .status-uploading {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            animation: pulse-upload 2s infinite;
+        }
+
+        .status-paused {
+            background: rgba(251, 191, 36, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .status-synced {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-failed {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            cursor: help;
+        }
+
+        @keyframes pulse-upload {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(0.98);
+            }
+        }
     </style>
 </head>
 
@@ -1634,6 +1684,279 @@
         // Global debug function - call inspectUploadQueue() in console to see queue status
         window.inspectUploadQueue = () => UploadManager.inspectQueue();
 
+        // --- UPLOAD COORDINATOR (Background Sync & Status Management) ---
+        const UploadCoordinator = {
+            activeUploads: new Map(), // sessionId -> { method, progress, status, totalChunks, uploadedChunks }
+            uploadLock: false,
+            
+            init: function() {
+                console.log('🎯 UploadCoordinator initialized');
+                
+                // Listen for connection changes
+                window.addEventListener('online', () => this.onConnectionRestored());
+                window.addEventListener('offline', () => this.onConnectionLost());
+                
+                // Listen for Service Worker messages
+                if (navigator.serviceWorker) {
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        this.handleServiceWorkerMessage(event.data);
+                    });
+                }
+                
+                // Register Background Sync if supported
+                if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+                    console.log('✓ Background Sync API supported');
+                } else {
+                    console.warn('⚠️ Background Sync API not supported - uploads will use fallback');
+                }
+            },
+            
+            registerUpload: function(sessionId, method = 'custom', totalChunks = 0) {
+                if (this.activeUploads.has(sessionId)) {
+                    console.log(`📝 Upload already registered: ${sessionId}`);
+                    return;
+                }
+                
+                const upload = {
+                    method: method, // 'custom', 'tus', or 'manual'
+                    progress: 0,
+                    status: 'uploading', // uploading, paused, synced, failed
+                    totalChunks: totalChunks,
+                    uploadedChunks: 0,
+                    startTime: Date.now(),
+                    error: null
+                };
+                
+                this.activeUploads.set(sessionId, upload);
+                console.log(`📝 Registered ${method} upload for session: ${sessionId} (${totalChunks} chunks)`);
+                this.updateUI(sessionId);
+                
+                // Register Background Sync if online
+                if (navigator.onLine && method !== 'tus') {
+                    this.registerBackgroundSync();
+                }
+            },
+            
+            updateProgress: function(sessionId, uploadedChunks, totalChunks) {
+                const upload = this.activeUploads.get(sessionId);
+                if (!upload) {
+                    console.warn(`⚠️ Upload not registered: ${sessionId}`);
+                    return;
+                }
+                
+                upload.uploadedChunks = uploadedChunks;
+                upload.totalChunks = totalChunks;
+                upload.progress = totalChunks > 0 ? Math.round((uploadedChunks / totalChunks) * 100) : 0;
+                
+                // Only log significant progress changes (every 10%)
+                if (upload.progress % 10 === 0 || upload.progress === 100) {
+                    console.log(`📊 Upload progress for ${sessionId}: ${upload.progress}% (${uploadedChunks}/${totalChunks})`);
+                }
+                
+                this.updateUI(sessionId);
+            },
+            
+            completeUpload: function(sessionId) {
+                const upload = this.activeUploads.get(sessionId);
+                if (!upload) return;
+                
+                upload.status = 'synced';
+                upload.progress = 100;
+                console.log(`✅ Upload completed: ${sessionId}`);
+                this.updateUI(sessionId);
+                
+                // Remove from active uploads after 5 seconds
+                setTimeout(() => {
+                    this.activeUploads.delete(sessionId);
+                    this.updateUI(sessionId);
+                }, 5000);
+            },
+            
+            failUpload: function(sessionId, error) {
+                const upload = this.activeUploads.get(sessionId);
+                if (!upload) return;
+                
+                upload.status = 'failed';
+                upload.error = error;
+                console.error(`❌ Upload failed: ${sessionId} - ${error}`);
+                this.updateUI(sessionId);
+            },
+            
+            onConnectionLost: function() {
+                console.log('📴 UploadCoordinator: Connection lost - pausing all uploads');
+                
+                // Pause all active uploads
+                for (const [sessionId, upload] of this.activeUploads.entries()) {
+                    if (upload.status === 'uploading') {
+                        upload.status = 'paused';
+                        this.updateUI(sessionId);
+                    }
+                }
+            },
+            
+            onConnectionRestored: function() {
+                console.log('🌐 UploadCoordinator: Connection restored - resuming uploads');
+                
+                // Resume all paused uploads
+                let hasResumed = false;
+                for (const [sessionId, upload] of this.activeUploads.entries()) {
+                    if (upload.status === 'paused') {
+                        upload.status = 'uploading';
+                        this.updateUI(sessionId);
+                        hasResumed = true;
+                    }
+                }
+                
+                // Trigger upload processing if we have paused uploads
+                if (hasResumed) {
+                    this.registerBackgroundSync();
+                    
+                    // Also trigger Service Worker directly
+                    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'PROCESS_UPLOADS',
+                            force: true
+                        });
+                    }
+                }
+            },
+            
+            handleServiceWorkerMessage: function(data) {
+                const { type, sessionId, chunkId, totalChunks, error } = data;
+                
+                switch (type) {
+                    case 'CHUNK_UPLOADED':
+                        // Count uploaded chunks for this session
+                        this.countUploadedChunks(sessionId);
+                        break;
+                        
+                    case 'SESSION_UPLOAD_COMPLETE':
+                        this.completeUpload(sessionId);
+                        break;
+                        
+                    case 'UPLOAD_ERROR':
+                        this.failUpload(sessionId, error);
+                        break;
+                        
+                    case 'UPLOAD_PROGRESS':
+                        if (sessionId) {
+                            const upload = this.activeUploads.get(sessionId);
+                            if (upload && upload.status !== 'uploading') {
+                                upload.status = 'uploading';
+                                this.updateUI(sessionId);
+                            }
+                        }
+                        break;
+                }
+            },
+            
+            countUploadedChunks: async function(sessionId) {
+                // Query IndexedDB to count remaining chunks
+                try {
+                    const db = await new Promise((resolve, reject) => {
+                        const req = indexedDB.open('WaveForgeDB_V4', 3);
+                        req.onsuccess = e => resolve(e.target.result);
+                        req.onerror = e => reject(e);
+                    });
+                    
+                    if (!db.objectStoreNames.contains('upload_queue')) return;
+                    
+                    const tx = db.transaction('upload_queue', 'readonly');
+                    const store = tx.objectStore('upload_queue');
+                    const allItems = await new Promise((resolve) => {
+                        const req = store.getAll();
+                        req.onsuccess = () => resolve(req.result);
+                    });
+                    
+                    const sessionChunks = allItems.filter(item => item.sessionId === sessionId);
+                    const upload = this.activeUploads.get(sessionId);
+                    
+                    if (upload) {
+                        const remainingChunks = sessionChunks.length;
+                        const uploadedChunks = upload.totalChunks - remainingChunks;
+                        this.updateProgress(sessionId, uploadedChunks, upload.totalChunks);
+                        
+                        // If all chunks uploaded, mark complete
+                        if (remainingChunks === 0) {
+                            this.completeUpload(sessionId);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error counting uploaded chunks:', err);
+                }
+            },
+            
+            registerBackgroundSync: function() {
+                if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+                    navigator.serviceWorker.ready.then(registration => {
+                        return registration.sync.register('upload-chunks');
+                    }).then(() => {
+                        console.log('🔄 Background Sync registered');
+                    }).catch(err => {
+                        console.warn('⚠️ Background Sync registration failed:', err);
+                    });
+                }
+            },
+            
+            updateUI: function(sessionId) {
+                const upload = this.activeUploads.get(sessionId);
+                
+                // Find all playlist items with this sessionId
+                const playlistItems = document.querySelectorAll(`[data-session-id="${sessionId}"]`);
+                
+                playlistItems.forEach(item => {
+                    // Remove existing badge
+                    const existingBadge = item.querySelector('.upload-status-badge');
+                    if (existingBadge) {
+                        existingBadge.remove();
+                    }
+                    
+                    // Add new badge if upload exists
+                    if (upload) {
+                        const badge = document.createElement('span');
+                        badge.className = `upload-status-badge status-${upload.status}`;
+                        badge.setAttribute('role', 'status');
+                        badge.setAttribute('aria-live', 'polite');
+                        
+                        let badgeText = '';
+                        let ariaLabel = '';
+                        
+                        switch (upload.status) {
+                            case 'uploading':
+                                badgeText = `⇪ ${upload.progress}%`;
+                                ariaLabel = `Uploading ${upload.progress} percent`;
+                                break;
+                            case 'paused':
+                                badgeText = '⏸ PAUSED';
+                                ariaLabel = 'Upload paused';
+                                break;
+                            case 'synced':
+                                badgeText = '✓ SYNCED';
+                                ariaLabel = 'Upload synced';
+                                break;
+                            case 'failed':
+                                badgeText = '❌ FAILED';
+                                ariaLabel = `Upload failed: ${upload.error || 'Unknown error'}`;
+                                badge.title = upload.error || 'Upload failed';
+                                break;
+                        }
+                        
+                        badge.textContent = badgeText;
+                        badge.setAttribute('aria-label', ariaLabel);
+                        
+                        // Insert badge after the filename
+                        const filenameElement = item.querySelector('.filename, .track-name');
+                        if (filenameElement) {
+                            filenameElement.insertAdjacentElement('afterend', badge);
+                        }
+                    }
+                });
+            }
+        };
+        
+        // Initialize UploadCoordinator
+        UploadCoordinator.init();
+
         // Monitor connection status and auto-resume uploads
         window.addEventListener('online', async () => {
             console.log('🌐 Connection restored, checking for pending uploads...');
@@ -1698,6 +2021,11 @@
                     blob: blob,
                     chunkIndex: chunkIndex
                 });
+
+                // Register upload with UploadCoordinator on first chunk
+                if (chunkIndex === 0 && typeof UploadCoordinator !== 'undefined') {
+                    UploadCoordinator.registerUpload(currentSessionId, 'custom', 0);
+                }
 
                 // AUTO UPLOAD: Upload chunk immediately to server in background
                 this.uploadChunkLive(blob, currentSessionId, chunkIndex);
@@ -2710,17 +3038,22 @@
             tracks.reverse().forEach(t => {
                 const el = document.createElement('div');
                 el.className = 'group flex flex-col p-3 rounded hover:bg-white/5 border border-transparent hover:border-white/10 transition-all';
+                
+                // Add session ID to container for UploadCoordinator
+                if (t.sessionId) {
+                    el.setAttribute('data-session-id', t.sessionId);
+                }
+                
                 const date = new Date(t.date).toLocaleDateString();
                 const ext = t.extension || 'webm';
                 let col = 'text-gray-500'; if (ext === 'wav') col = 'text-cyan-400'; if (ext === 'mp3') col = 'text-pink-400';
 
-                const sessionAttr = t.sessionId ? ` data-session-id="${t.sessionId}"` : '';
                 el.innerHTML = `
                     <div class="flex justify-between items-center w-full">
-                        <div><div class="font-bold text-gray-200 group-hover:text-cyan-400 transition-colors">${t.name}</div><div class="text-[10px] ${col} font-mono">${date} | ${ext.toUpperCase()}</div></div>
+                        <div><div class="font-bold text-gray-200 group-hover:text-cyan-400 transition-colors filename">${t.name}</div><div class="text-[10px] ${col} font-mono">${date} | ${ext.toUpperCase()}</div></div>
                         <div class="flex gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
                             <button class="play-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-cyan-400 hover:text-cyan-400 hover:shadow-[0_0_10px_rgba(0,243,255,0.3)] transition-all" aria-label="Abspielen: ${t.name}" type="button"><span aria-hidden="true">▶</span></button>
-                            <button class="up-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-cyan-400 hover:text-cyan-400 upload-icon transition-all" title="Upload to Cloud" aria-label="In Cloud hochladen: ${t.name}"${sessionAttr} type="button"><span aria-hidden="true">☁</span></button>
+                            <button class="up-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-cyan-400 hover:text-cyan-400 upload-icon transition-all" title="Upload to Cloud" aria-label="In Cloud hochladen: ${t.name}" type="button"><span aria-hidden="true">☁</span></button>
                             <button class="dl-btn-${t.id} px-2 h-8 rounded border border-gray-600 flex items-center justify-center hover:border-green-400 hover:text-green-400 text-[10px] font-mono transition-all" aria-label="Herunterladen: ${t.name}" type="button">DL</button>
                             <button class="del-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-red-500 hover:text-red-500 transition-all" aria-label="Löschen: ${t.name}" type="button"><span aria-hidden="true">×</span></button>
                         </div>

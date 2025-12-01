@@ -364,6 +364,14 @@ async function processUploads() {
                 throw err; // Re-throw to trigger retry logic
             }
             
+            // Notify UploadCoordinator about chunk upload
+            broadcastStatus({
+                type: 'CHUNK_UPLOADED',
+                sessionId: item.sessionId,
+                chunkId: item.chunkIndex,
+                totalChunks: item.totalChunks
+            });
+            
             // Clear blob reference to free memory
             item.blob = null;
 
@@ -373,6 +381,11 @@ async function processUploads() {
             
             if (sessionChunks.length === 0) {
                 console.log(`[SW] ✅ All chunks uploaded for session ${item.sessionId}`);
+                broadcastStatus({ 
+                    type: 'SESSION_UPLOAD_COMPLETE', 
+                    sessionId: item.sessionId 
+                });
+                // Keep legacy UPLOAD_COMPLETE for compatibility
                 broadcastStatus({ 
                     type: 'UPLOAD_COMPLETE', 
                     sessionId: item.sessionId 
@@ -384,6 +397,16 @@ async function processUploads() {
         } catch (error) {
             const retryCount = (item.retryCount || 0) + 1;
             console.warn(`[SW] Upload failed for chunk ${item.chunkIndex} (session ${item.sessionId}, attempt ${retryCount}):`, error.message);
+            
+            // Notify UploadCoordinator about error (only after multiple failures)
+            if (retryCount >= 3) {
+                broadcastStatus({
+                    type: 'UPLOAD_ERROR',
+                    sessionId: item.sessionId,
+                    chunkId: item.chunkIndex,
+                    error: error.message
+                });
+            }
             
             // Check if this is a connection error (server unreachable)
             const isConnectionError = error.message.includes('Failed to fetch') || 
@@ -483,7 +506,16 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('sync', (event) => {
-    if (event.tag === 'audio-upload') {
+    if (event.tag === 'audio-upload' || event.tag === 'upload-chunks') {
+        console.log(`[SW] 🔄 Background Sync triggered: ${event.tag}`);
+        event.waitUntil(processUploads());
+    }
+});
+
+// Periodic Background Sync (optional, for long-running uploads)
+self.addEventListener('periodicsync', (event) => {
+    if (event.tag === 'upload-chunks-periodic') {
+        console.log('[SW] 🔄 Periodic Background Sync triggered');
         event.waitUntil(processUploads());
     }
 });
