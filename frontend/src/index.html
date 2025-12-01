@@ -1816,6 +1816,81 @@
                 } else {
                     console.warn('⚠️ Background Sync API not supported - uploads will use fallback');
                 }
+                
+                // IMPORTANT: Load pending uploads from IndexedDB on page load
+                this.loadPendingUploads();
+            },
+            
+            loadPendingUploads: async function() {
+                console.log('🔍 Checking for pending uploads...');
+                
+                try {
+                    const db = await new Promise((resolve, reject) => {
+                        const req = indexedDB.open('WaveForgeDB_V4', 3);
+                        req.onsuccess = e => resolve(e.target.result);
+                        req.onerror = e => reject(e);
+                    });
+                    
+                    if (!db.objectStoreNames.contains('upload_queue')) {
+                        console.log('✓ No upload queue found');
+                        return;
+                    }
+                    
+                    const tx = db.transaction('upload_queue', 'readonly');
+                    const store = tx.objectStore('upload_queue');
+                    const allItems = await new Promise((resolve) => {
+                        const req = store.getAll();
+                        req.onsuccess = () => resolve(req.result);
+                        req.onerror = () => resolve([]);
+                    });
+                    
+                    if (allItems.length === 0) {
+                        console.log('✓ No pending uploads');
+                        return;
+                    }
+                    
+                    // Group chunks by sessionId
+                    const sessionChunks = {};
+                    allItems.forEach(item => {
+                        const sessionId = item.sessionId;
+                        if (!sessionId) return;
+                        
+                        if (!sessionChunks[sessionId]) {
+                            sessionChunks[sessionId] = {
+                                chunks: [],
+                                totalChunks: item.totalChunks || 0
+                            };
+                        }
+                        sessionChunks[sessionId].chunks.push(item);
+                    });
+                    
+                    // Register each session as an active upload
+                    for (const [sessionId, data] of Object.entries(sessionChunks)) {
+                        const uploadedChunks = 0; // Will be calculated by countUploadedChunks
+                        const totalChunks = data.totalChunks || data.chunks.length;
+                        
+                        console.log(`📦 Found pending upload: ${sessionId} (${data.chunks.length} chunks in queue)`);
+                        
+                        // Register as uploading (will show paused if offline)
+                        this.registerUpload(sessionId, 'custom', totalChunks);
+                        
+                        // Count actual uploaded chunks
+                        await this.countUploadedChunks(sessionId);
+                    }
+                    
+                    console.log(`✅ Loaded ${Object.keys(sessionChunks).length} pending uploads`);
+                    
+                    // Trigger UI update for all active uploads
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        for (const sessionId of this.activeUploads.keys()) {
+                            this.updateUI(sessionId);
+                        }
+                    }, 100);
+                    
+                } catch (err) {
+                    console.error('Error loading pending uploads:', err);
+                }
             },
             
             registerUpload: function(sessionId, method = 'custom', totalChunks = 0) {
@@ -3363,6 +3438,12 @@
                     };
                     UploadManager.queueUpload(t.id, t.blob, `${t.name}.${ext}`, metadata, t.sessionId);
                 };
+                
+                // IMPORTANT: Immediately show upload status if this recording has an active upload
+                if (t.sessionId && UploadCoordinator.activeUploads.has(t.sessionId)) {
+                    // Trigger UI update immediately after element is in DOM
+                    setTimeout(() => UploadCoordinator.updateUI(t.sessionId), 0);
+                }
             });
         }
 
