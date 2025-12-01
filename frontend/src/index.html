@@ -2855,23 +2855,19 @@
                     };
                     
                     // IMPORTANT: Count total chunks in queue for this session and register upload
+                    const savedSessionId = currentSessionId; // Store before resetting
                     const countTx = db.transaction(['upload_queue'], 'readonly');
                     const countStore = countTx.objectStore('upload_queue');
                     const countReq = countStore.getAll();
                     countReq.onsuccess = () => {
-                        const sessionChunks = countReq.result.filter(item => item.sessionId === currentSessionId);
+                        const sessionChunks = countReq.result.filter(item => item.sessionId === savedSessionId);
                         const totalChunks = sessionChunks.length;
                         
                         console.log(`📦 Recording saved: ${totalChunks} chunks queued for upload`);
                         
-                        // Register upload with total chunks
+                        // Register upload with total chunks BEFORE rendering playlist
                         if (typeof UploadCoordinator !== 'undefined' && totalChunks > 0) {
-                            UploadCoordinator.registerUpload(currentSessionId, 'custom', totalChunks);
-                            
-                            // Immediately update UI to show upload status
-                            setTimeout(() => {
-                                UploadCoordinator.updateUI(currentSessionId);
-                            }, 100);
+                            UploadCoordinator.registerUpload(savedSessionId, 'custom', totalChunks);
                         }
                     };
                     
@@ -2890,9 +2886,19 @@
                 }
 
                 tempBlob = null; // Clear tempBlob after successful save
+                const savedSessionId = currentSessionId; // Store sessionId before resetting
                 currentSessionId = null; // Reset session ID
                 loadTracksFromDB();
                 closeSaveModal();
+                
+                // CRITICAL: Trigger UI update AFTER playlist is rendered
+                // This ensures the DOM elements exist before we try to update them
+                if (savedSessionId && typeof UploadCoordinator !== 'undefined') {
+                    setTimeout(() => {
+                        console.log(`🎨 Triggering UI update for session: ${savedSessionId}`);
+                        UploadCoordinator.updateUI(savedSessionId);
+                    }, 200);
+                }
             };
 
             tx.onerror = (e) => {
@@ -3483,6 +3489,17 @@
                     setTimeout(() => UploadCoordinator.updateUI(t.sessionId), 0);
                 }
             });
+            
+            // CRITICAL: After rendering all items, update UI for ALL active uploads
+            // This ensures the upload status boxes are expanded immediately
+            if (typeof UploadCoordinator !== 'undefined' && UploadCoordinator.activeUploads.size > 0) {
+                setTimeout(() => {
+                    console.log(`🎨 Updating UI for ${UploadCoordinator.activeUploads.size} active uploads after playlist render`);
+                    for (const sessionId of UploadCoordinator.activeUploads.keys()) {
+                        UploadCoordinator.updateUI(sessionId);
+                    }
+                }, 50);
+            }
         }
 
         function startTimer() { startTime = Date.now(); timerInterval = setInterval(() => { document.getElementById('timerDisplay').textContent = new Date(Date.now() - startTime).toISOString().substr(11, 8); }, 100); }
