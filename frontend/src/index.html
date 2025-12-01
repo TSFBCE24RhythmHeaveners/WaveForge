@@ -1822,7 +1822,7 @@
             },
             
             handleServiceWorkerMessage: function(data) {
-                const { type, sessionId, chunkId, totalChunks, error } = data;
+                const { type, sessionId, chunkId, totalChunks, error, fileName } = data;
                 
                 switch (type) {
                     case 'CHUNK_UPLOADED':
@@ -1831,6 +1831,12 @@
                         break;
                         
                     case 'SESSION_UPLOAD_COMPLETE':
+                        this.completeUpload(sessionId);
+                        break;
+                        
+                    case 'ASSEMBLY_COMPLETE':
+                        console.log(`✅ Assembly completed for session ${sessionId}: ${fileName}`);
+                        showToast(`Upload complete: ${fileName}`);
                         this.completeUpload(sessionId);
                         break;
                         
@@ -2186,10 +2192,37 @@
                         const errorText = await response.text();
                         console.error('Server error:', response.status, errorText);
                         showToast(`Server error: ${response.status}`, true);
+                        
+                        // Queue for retry if server error
+                        await this.queueRecordingComplete(sessionId, fileName, metadata);
                     }
                 } catch (error) {
                     console.error('Error signaling recording complete:', error);
-                    showToast('Error signaling server', true);
+                    showToast('Upload queued - will retry when connection restored', false);
+                    
+                    // Queue the signal for retry when connection restored
+                    await this.queueRecordingComplete(sessionId, fileName, metadata);
+                }
+            },
+            queueRecordingComplete: async function (sessionId, fileName, metadata) {
+                console.log(`📥 Queuing recording complete signal for session ${sessionId}`);
+                
+                try {
+                    if (!navigator.serviceWorker.controller) {
+                        console.error('No service worker controller available');
+                        return;
+                    }
+                    
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'QUEUE_ASSEMBLY_SIGNAL',
+                        sessionId: sessionId,
+                        fileName: fileName,
+                        metadata: metadata
+                    });
+                    
+                    console.log('✓ Assembly signal queued for retry');
+                } catch (err) {
+                    console.error('Failed to queue assembly signal:', err);
                 }
             },
             checkOrphans: function () {

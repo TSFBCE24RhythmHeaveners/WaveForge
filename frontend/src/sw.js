@@ -28,6 +28,38 @@ function openDB() {
     });
 }
 
+// Queue Assembly Signal for Retry
+async function queueAssemblySignal(sessionId, fileName, metadata) {
+    console.log(`[SW] 📥 Queuing assembly signal for session ${sessionId}`);
+    
+    const db = await openDB();
+    const tx = db.transaction(STORE_UPLOAD_QUEUE, 'readwrite');
+    const store = tx.objectStore(STORE_UPLOAD_QUEUE);
+    
+    const queueItem = {
+        id: `assembly_${sessionId}_${Date.now()}`,
+        type: 'assembly_signal',
+        sessionId: sessionId,
+        fileName: fileName,
+        metadata: metadata,
+        retryCount: 0,
+        nextRetryAt: 0,
+        queuedAt: Date.now()
+    };
+    
+    await new Promise((resolve, reject) => {
+        const req = store.add(queueItem);
+        req.onsuccess = () => {
+            console.log(`[SW] ✓ Assembly signal queued: ${queueItem.id}`);
+            resolve();
+        };
+        req.onerror = (e) => {
+            console.error('[SW] Failed to queue assembly signal:', e);
+            reject(e);
+        };
+    });
+}
+
 // Get Upload Queue Helper
 async function getUploadQueue(db) {
     return new Promise((resolve) => {
@@ -332,7 +364,44 @@ async function processUploads() {
 
     for (const item of readyQueue) {
         try {
-            // Prepare Form Data
+            // Check if this is an assembly signal instead of a chunk
+            if (item.type === 'assembly_signal') {
+                const retryCount = item.retryCount || 0;
+                const retryInfo = retryCount > 0 ? ` (attempt ${retryCount + 1})` : '';
+                console.log(`[SW] 📢 Sending assembly signal for session ${item.sessionId}${retryInfo}`);
+                
+                const formData = new FormData();
+                formData.append('session_id', item.sessionId);
+                formData.append('file_name', item.fileName);
+                formData.append('metadata', JSON.stringify(item.metadata));
+                
+                const response = await fetch('/recording/complete', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log(`[SW] ✓ Assembly signal acknowledged:`, result);
+                
+                // Success: Remove from queue
+                await removeFromQueue(db, item.id);
+                console.log(`[SW] ✅ Assembly signal removed from queue`);
+                
+                // Notify main thread
+                broadcastStatus({
+                    type: 'ASSEMBLY_COMPLETE',
+                    sessionId: item.sessionId,
+                    fileName: item.fileName
+                });
+                
+                continue; // Skip to next item
+            }
+            
+            // Regular chunk upload processing
             const retryCount = item.retryCount || 0;
             const retryInfo = retryCount > 0 ? ` (attempt ${retryCount + 1})` : '';
             const uploadMethod = item.uploadMethod || 'custom';
@@ -529,6 +598,17 @@ self.addEventListener('message', async (event) => {
     }
     
     switch (type) {
+        case 'QUEUE_ASSEMBLY_SIGNAL':
+            console.log('[SW] Received QUEUE_ASSEMBLY_SIGNAL request');
+            await queueAssemblySignal(
+                event.data.sessionId,
+                event.data.fileName,
+                event.data.metadata
+            );
+            console.log('[SW] Assembly signal queued, triggering processUploads');
+            await processUploads();
+            break;
+            
         case 'UPLOAD_CHUNK_TUS':
             await handleTUSChunkUpload(data);
             break;
