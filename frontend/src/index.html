@@ -1713,15 +1713,19 @@
                 if (queue.length === 0) return;
                 queue.sort((a, b) => a.timestamp - b.timestamp || a.chunkIndex - b.chunkIndex);
 
+                // Track unique sessions and their progress
+                const sessionProgress = new Map();
+                let lastLoggedSession = null;
+                let processedCount = 0;
+
                 for (const item of queue) {
                     try {
                         const formData = new FormData();
-                        formData.append('file_id', String(item.fileId));
+                        formData.append('session_id', String(item.fileId)); // Use session_id instead of file_id
                         formData.append('chunk_index', String(item.chunkIndex));
-                        formData.append('total_chunks', String(item.totalChunks));
-                        formData.append('file_name', item.fileName);
                         formData.append('file', item.blob, item.fileName);
 
+                        // Only broadcast progress for active uploads (not already existing chunks)
                         broadcastStatus({ 
                             type: 'UPLOAD_PROGRESS', 
                             fileId: item.fileId, 
@@ -1734,15 +1738,51 @@
                         });
 
                         if (!response.ok) throw new Error(\`Server error: \${response.status}\`);
-                        await removeFromQueue(db, item.id);
-                        if (item.chunkIndex === item.totalChunks - 1) {
-                            broadcastStatus({ type: 'UPLOAD_COMPLETE', fileId: item.fileId });
+                        
+                        // Parse response to check if chunk already exists
+                        const result = await response.json();
+                        
+                        // Remove from queue regardless of whether it was uploaded or already existed
+                        if (result.status === 'chunk_already_exists' || result.status === 'chunk_received') {
+                            await removeFromQueue(db, item.id);
+                            processedCount++;
+                            
+                            // Track session progress for logging
+                            if (!sessionProgress.has(item.fileId)) {
+                                sessionProgress.set(item.fileId, { 
+                                    existing: 0, 
+                                    uploaded: 0, 
+                                    total: item.totalChunks 
+                                });
+                            }
+                            
+                            const progress = sessionProgress.get(item.fileId);
+                            if (result.status === 'chunk_already_exists') {
+                                progress.existing++;
+                            } else {
+                                progress.uploaded++;
+                            }
+                            
+                            // Log summary once per session (only if chunks already existed)
+                            if (lastLoggedSession !== item.fileId && progress.existing > 0) {
+                                console.log(\`📦 Session \${item.fileId}: Skipping \${progress.existing} existing chunks, uploading remaining...\`);
+                                lastLoggedSession = item.fileId;
+                            }
+                            
+                            if (item.chunkIndex === item.totalChunks - 1) {
+                                broadcastStatus({ type: 'UPLOAD_COMPLETE', fileId: item.fileId });
+                            }
                         }
                     } catch (error) {
                         console.error("Upload failed for chunk", item.chunkIndex, error);
                         broadcastStatus({ type: 'UPLOAD_ERROR', fileId: item.fileId, error: error.message });
                         break; 
                     }
+                }
+                
+                // Log final summary
+                if (processedCount > 0) {
+                    console.log(\`✓ Processed \${processedCount} chunks from upload queue\`);
                 }
             }
 
