@@ -643,6 +643,105 @@
                 transform: scale(0.98);
             }
         }
+
+        /* Live Upload Indicator (during recording) */
+        .live-upload-indicator {
+            position: relative;
+        }
+
+        .live-upload-icon {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 10px;
+            color: var(--neon-cyan);
+        }
+
+        .live-upload-icon:hover {
+            background: rgba(0, 243, 255, 0.2);
+            border-color: rgba(0, 243, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+        }
+
+        .live-upload-icon.uploading {
+            animation: pulse-live-upload 2s infinite;
+        }
+
+        @keyframes pulse-live-upload {
+            0%, 100% {
+                opacity: 1;
+                box-shadow: 0 0 5px rgba(0, 243, 255, 0.3);
+            }
+            50% {
+                opacity: 0.7;
+                box-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+            }
+        }
+
+        .live-upload-details {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            padding: 12px;
+            background: rgba(10, 10, 26, 0.95);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            min-width: 220px;
+            z-index: 1000;
+            transform: translateY(-10px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s;
+        }
+
+        .live-upload-details.active {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .live-upload-details-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--neon-cyan);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .live-upload-details-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 9px;
+        }
+
+        .live-upload-details-stat:last-child {
+            border-bottom: none;
+        }
+
+        .live-upload-details-label {
+            color: #9ca3af;
+        }
+
+        .live-upload-details-value {
+            color: #fff;
+            font-weight: 600;
+            font-family: 'Share Tech Mono', monospace;
+        }
     </style>
 </head>
 
@@ -916,7 +1015,7 @@
         </div>
         <div class="flex justify-center items-center gap-4">
             <button onclick="playerSeekStart()" class="player-btn text-xs" aria-label="Zum Anfang springen"
-                type="button">|<< /button>
+                type="button">|&lt;&lt;</button>
                     <button onclick="playerSkip(-10)" class="player-btn text-xs" aria-label="10 Sekunden zurück"
                         type="button">-10s</button>
                     <button id="dockPlayBtn" onclick="togglePlayPause()" class="player-btn main-play"
@@ -924,7 +1023,7 @@
                     <button onclick="playerSkip(10)" class="player-btn text-xs" aria-label="10 Sekunden vorwärts"
                         type="button">+10s</button>
                     <button onclick="playerSeekEnd()" class="player-btn text-xs" aria-label="Zum Ende springen"
-                        type="button">>|</button>
+                        type="button">&gt;&gt;|</button>
         </div>
         <div class="text-center">
             <div id="nowPlayingText" class="text-[10px] text-gray-400 tracking-wider font-mono truncate">NO TRACK
@@ -1337,7 +1436,7 @@
                                     </div>
                                     <div><span class="text-gray-300">Mit Modifikationen:</span> Jede externe Änderung
                                         oder Anpassung erfordert die Zustimmung des Authors und ggf. eine separate,
-                                        kostenpflichtige kommerzielle Lizenz.</div>
+                                        kommerzielle Lizenz zur freien Nutzung.</div>
                                 </div>
                             </div>
 
@@ -1515,7 +1614,20 @@
     </div>
 
     <script>
-        // --- 1. UTILS & UI LOGIC ---
+        // --- 1. FEATURE FLAGS ---
+        
+        const FeatureFlags = {
+            // Show live upload progress during recording
+            SHOW_LIVE_UPLOAD_PROGRESS: true, // ← Set to false to disable
+            
+            // Only show indicator after X chunks (reduces noise for short recordings)
+            LIVE_UPLOAD_MIN_CHUNKS: 3,
+            
+            // Auto-hide details after X seconds of inactivity
+            LIVE_UPLOAD_AUTO_HIDE_SECONDS: 5
+        };
+
+        // --- 2. UTILS & UI LOGIC ---
 
         // DELETE MODAL VARIABLES
         let deleteModal = null;
@@ -1616,6 +1728,144 @@
                 t.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
             }, 3000);
         }
+
+        // === LIVE UPLOAD INDICATOR (DURING RECORDING) ===
+        let liveUploadIndicator = null;
+        let liveUploadDetailsVisible = false;
+        let liveUploadAutoHideTimeout = null;
+        let liveUploadChunkCount = 0;
+        let liveUploadLastTime = null;
+
+        function createLiveUploadIndicator() {
+            if (!FeatureFlags.SHOW_LIVE_UPLOAD_PROGRESS) return null;
+            
+            // Find timer display container
+            const timerContainer = document.getElementById('timerDisplay').parentElement;
+            
+            // Create indicator container
+            const indicator = document.createElement('div');
+            indicator.id = 'liveUploadIndicator';
+            indicator.className = 'live-upload-indicator';
+            indicator.innerHTML = `
+                <div class="live-upload-icon uploading" 
+                     onclick="toggleLiveUploadDetails()" 
+                     role="button" 
+                     tabindex="0"
+                     aria-label="Live upload status: Click to show details"
+                     title="Background upload active - Click for details">
+                    <span aria-hidden="true">☁↑</span>
+                    <span id="liveUploadCount" aria-live="polite">0</span>
+                </div>
+                <div id="liveUploadDetails" class="live-upload-details" role="tooltip">
+                    <div class="live-upload-details-header">
+                        <span aria-hidden="true">⇪</span> Live Background Upload
+                    </div>
+                    <div class="live-upload-details-stat">
+                        <span class="live-upload-details-label">Chunks Uploaded:</span>
+                        <span class="live-upload-details-value" id="liveUploadChunksValue">0</span>
+                    </div>
+                    <div class="live-upload-details-stat">
+                        <span class="live-upload-details-label">Last Upload:</span>
+                        <span class="live-upload-details-value" id="liveUploadLastTime">just now</span>
+                    </div>
+                    <div class="live-upload-details-stat">
+                        <span class="live-upload-details-label">Status:</span>
+                        <span class="live-upload-details-value" style="color: #22c55e;">✓ Syncing</span>
+                    </div>
+                </div>
+            `;
+            
+            // Insert before timer display
+            timerContainer.insertBefore(indicator, document.getElementById('timerDisplay'));
+            
+            return indicator;
+        }
+
+        function toggleLiveUploadDetails() {
+            if (!liveUploadIndicator) return;
+            
+            const details = document.getElementById('liveUploadDetails');
+            if (!details) return;
+            
+            liveUploadDetailsVisible = !liveUploadDetailsVisible;
+            
+            if (liveUploadDetailsVisible) {
+                details.classList.add('active');
+                clearTimeout(liveUploadAutoHideTimeout);
+                
+                // Auto-hide after configured seconds
+                if (FeatureFlags.LIVE_UPLOAD_AUTO_HIDE_SECONDS > 0) {
+                    liveUploadAutoHideTimeout = setTimeout(() => {
+                        liveUploadDetailsVisible = false;
+                        details.classList.remove('active');
+                    }, FeatureFlags.LIVE_UPLOAD_AUTO_HIDE_SECONDS * 1000);
+                }
+            } else {
+                details.classList.remove('active');
+                clearTimeout(liveUploadAutoHideTimeout);
+            }
+        }
+
+        function updateLiveUploadIndicator(chunkCount) {
+            if (!FeatureFlags.SHOW_LIVE_UPLOAD_PROGRESS) return;
+            if (chunkCount < FeatureFlags.LIVE_UPLOAD_MIN_CHUNKS) return;
+            
+            // Create indicator if it doesn't exist
+            if (!liveUploadIndicator) {
+                liveUploadIndicator = createLiveUploadIndicator();
+                if (!liveUploadIndicator) return; // Feature disabled
+            }
+            
+            liveUploadChunkCount = chunkCount;
+            liveUploadLastTime = new Date();
+            
+            // Update count badge
+            const countEl = document.getElementById('liveUploadCount');
+            if (countEl) {
+                countEl.textContent = chunkCount;
+            }
+            
+            // Update details if visible
+            const chunksValueEl = document.getElementById('liveUploadChunksValue');
+            if (chunksValueEl) {
+                chunksValueEl.textContent = chunkCount;
+            }
+            
+            const lastTimeEl = document.getElementById('liveUploadLastTime');
+            if (lastTimeEl) {
+                lastTimeEl.textContent = 'just now';
+            }
+        }
+
+        function removeLiveUploadIndicator() {
+            if (liveUploadIndicator) {
+                liveUploadIndicator.remove();
+                liveUploadIndicator = null;
+                liveUploadDetailsVisible = false;
+                liveUploadChunkCount = 0;
+                liveUploadLastTime = null;
+                clearTimeout(liveUploadAutoHideTimeout);
+            }
+        }
+
+        // Update "Last Upload" time every second if details are visible
+        setInterval(() => {
+            if (!liveUploadDetailsVisible || !liveUploadLastTime) return;
+            
+            const lastTimeEl = document.getElementById('liveUploadLastTime');
+            if (!lastTimeEl) return;
+            
+            const secondsAgo = Math.floor((new Date() - liveUploadLastTime) / 1000);
+            
+            if (secondsAgo < 5) {
+                lastTimeEl.textContent = 'just now';
+            } else if (secondsAgo < 60) {
+                lastTimeEl.textContent = `${secondsAgo}s ago`;
+            } else {
+                const minutesAgo = Math.floor(secondsAgo / 60);
+                lastTimeEl.textContent = `${minutesAgo}m ago`;
+            }
+        }, 1000);
 
         // === MODAL ACCESSIBILITY: Focus Trap & ESC Key Handler (BITV 2.0) ===
         let lastFocusedElement = null;
@@ -2553,6 +2803,11 @@
                     chunkIndex: chunkIndex
                 });
 
+                // Update live upload indicator (Feature-Flag controlled)
+                if (typeof updateLiveUploadIndicator === 'function') {
+                    updateLiveUploadIndicator(chunkIndex + 1);
+                }
+
                 // Register upload with UploadCoordinator on first chunk
                 if (chunkIndex === 0 && typeof UploadCoordinator !== 'undefined') {
                     UploadCoordinator.registerUpload(currentSessionId, 'custom', 0);
@@ -3251,6 +3506,9 @@
                 document.getElementById('recordButton').disabled = false;
                 document.getElementById('stopButton').disabled = true;
                 stopTimer();
+                
+                // Remove live upload indicator
+                removeLiveUploadIndicator();
             }
         }
 
