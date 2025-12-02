@@ -1692,7 +1692,24 @@
         };
         
         // Initialize environment detection immediately
-        const ENV = RuntimeEnvironment.init();
+        let ENV;
+        try {
+            ENV = RuntimeEnvironment.init();
+            console.log('✅ RuntimeEnvironment initialized:', ENV);
+        } catch (err) {
+            console.error('❌ RuntimeEnvironment initialization failed:', err);
+            // Fallback to HTTP mode if initialization fails
+            ENV = {
+                serviceWorker: true,
+                backgroundSync: true,
+                cloudUpload: true,
+                serverFetch: true,
+                localRecording: true,
+                localPlayback: true,
+                localStorage: true,
+                downloadBlob: true
+            };
+        }
 
         // --- 2. FEATURE FLAGS ---
         
@@ -2050,7 +2067,7 @@
             retryInterval: null,
             register: async function () {
                 // CRITICAL: Skip Service Worker registration in file:// mode
-                if (!ENV.canUseFeature('serviceWorker')) {
+                if (ENV && ENV.serviceWorker === false) {
                     console.log('⏭️ Service Worker registration skipped (not available in current environment)');
                     return;
                 }
@@ -2129,7 +2146,7 @@
             },
             queueUpload: async function (id, blob, fileName, metadata = {}, sessionId = null) {
                 // CRITICAL: Block upload queue in file:// mode
-                if (!ENV.canUseFeature('cloudUpload')) {
+                if (ENV && ENV.cloudUpload === false) {
                     console.warn('⏭️ Upload queue disabled in offline mode');
                     showToast('Upload not available in offline mode - use DL button', false);
                     return;
@@ -2910,7 +2927,7 @@
             },
             uploadChunkLive: async function (blob, sessionId, chunkIndex) {
                 // CRITICAL: Skip live upload in file:// mode
-                if (!ENV.canUseFeature('cloudUpload')) {
+                if (ENV && ENV.cloudUpload === false) {
                     console.log('⏭️ Live chunk upload skipped (cloud upload not available)');
                     return;
                 }
@@ -3038,7 +3055,7 @@
             },
             signalRecordingComplete: async function (sessionId, fileName, metadata) {
                 // CRITICAL: Skip server signal in file:// mode
-                if (!ENV.canUseFeature('serverFetch')) {
+                if (ENV && ENV.serverFetch === false) {
                     console.log('⏭️ Server signal skipped (not available in offline mode)');
                     showToast('Recording saved locally - cloud sync disabled in offline mode', false);
                     return;
@@ -4022,7 +4039,7 @@
                 let col = 'text-gray-500'; if (ext === 'wav') col = 'text-cyan-400'; if (ext === 'mp3') col = 'text-pink-400';
 
                 // CONDITIONAL: Show upload button only if cloud upload is available
-                const uploadButtonHTML = ENV.canUseFeature('cloudUpload') 
+                const uploadButtonHTML = (!ENV || ENV.cloudUpload !== false)
                     ? `<button class="up-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-cyan-400 hover:text-cyan-400 upload-icon transition-all" title="Upload to Cloud" aria-label="In Cloud hochladen: ${t.name}" type="button"><span aria-hidden="true">☁</span></button>`
                     : `<button class="w-8 h-8 rounded-full border border-gray-700 flex items-center justify-center text-gray-700 cursor-not-allowed opacity-30" title="Upload not available in offline mode" disabled><span aria-hidden="true">☁</span></button>`;
 
@@ -4047,7 +4064,7 @@
                 el.querySelector(`.del-btn-${t.id}`).onclick = () => openDeleteModal(t.id, t.name);
                 
                 // CONDITIONAL: Only add upload handler if cloud upload is available
-                if (ENV.canUseFeature('cloudUpload')) {
+                if (!ENV || ENV.cloudUpload !== false) {
                     el.querySelector(`.up-btn-${t.id}`).onclick = () => {
                         document.getElementById(`progress-bar-${t.id}`).style.display = 'block';
                         const metadata = {
