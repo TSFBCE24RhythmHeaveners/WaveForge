@@ -188,7 +188,8 @@ class TestRecordingCompleteEndpoint:
 class TestChunkAssembly:
     """Test the chunk assembly background task."""
     
-    def test_assemble_chunks_with_metadata(self, mock_session):
+    @pytest.mark.anyio
+    async def test_assemble_chunks_with_metadata(self, mock_session):
         """Test assembling chunks into final file with metadata."""
         from routes.recording_complete import assemble_chunks_with_metadata
         
@@ -201,8 +202,9 @@ class TestChunkAssembly:
         
         # Run assembly (synchronously for testing)
         try:
-            assemble_chunks_with_metadata(
+            await assemble_chunks_with_metadata(
                 session_id=mock_session["session_id"],
+                session_info={},
                 file_name=mock_session["file_name"],
                 metadata=metadata
             )
@@ -262,7 +264,8 @@ class TestChunkAssembly:
                 metadata={}
             )
     
-    def test_assemble_cleans_up_chunks(self, mock_session):
+    @pytest.mark.anyio
+    async def test_assemble_cleans_up_chunks(self, mock_session):
         """Test that chunk files are cleaned up after assembly."""
         from routes.recording_complete import assemble_chunks_with_metadata
         
@@ -272,8 +275,9 @@ class TestChunkAssembly:
             assert chunk_path.exists()
         
         # Run assembly
-        assemble_chunks_with_metadata(
+        await assemble_chunks_with_metadata(
             session_id=mock_session["session_id"],
+            session_info={},
             file_name=mock_session["file_name"],
             metadata={"duration": 10.0}
         )
@@ -286,7 +290,8 @@ class TestChunkAssembly:
         final_path = mock_session["session_dir"] / mock_session["file_name"]
         assert final_path.exists()
     
-    def test_assemble_with_large_chunks(self, temp_upload_dir, monkeypatch):
+    @pytest.mark.anyio
+    async def test_assemble_with_large_chunks(self, temp_upload_dir, monkeypatch):
         """Test assembly with larger chunks (>1MB) to verify buffering."""
         from routes.recording_complete import assemble_chunks_with_metadata
         from routes import tus_upload
@@ -312,8 +317,9 @@ class TestChunkAssembly:
         monkeypatch.setattr("app.server.UPLOAD_DIR", temp_upload_dir)
         
         # Assembly should handle large files
-        assemble_chunks_with_metadata(
+        await assemble_chunks_with_metadata(
             session_id=session_id,
+            session_info=mock_sessions[session_id],
             file_name="large_recording.webm",
             metadata={"size": 6 * 1024 * 1024}
         )
@@ -353,7 +359,8 @@ class TestServerPath:
 class TestMetadataStorage:
     """Test metadata storage alongside audio files."""
     
-    def test_metadata_json_format(self, mock_session):
+    @pytest.mark.anyio
+    async def test_metadata_json_format(self, mock_session):
         """Test that metadata is stored in correct JSON format."""
         from routes.recording_complete import assemble_chunks_with_metadata
         
@@ -366,8 +373,9 @@ class TestMetadataStorage:
             "bitrate": 128000
         }
         
-        assemble_chunks_with_metadata(
+        await assemble_chunks_with_metadata(
             session_id=mock_session["session_id"],
+            session_info={},
             file_name=mock_session["file_name"],
             metadata=metadata
         )
@@ -384,7 +392,8 @@ class TestMetadataStorage:
         assert saved["sampleRate"] == metadata["sampleRate"]
         assert saved["channels"] == metadata["channels"]
     
-    def test_metadata_with_unicode(self, mock_session):
+    @pytest.mark.anyio
+    async def test_metadata_with_unicode(self, mock_session):
         """Test metadata storage with unicode characters."""
         from routes.recording_complete import assemble_chunks_with_metadata
         
@@ -394,8 +403,9 @@ class TestMetadataStorage:
             "notes": "Recording with émojis 🎵🎤"
         }
         
-        assemble_chunks_with_metadata(
+        await assemble_chunks_with_metadata(
             session_id=mock_session["session_id"],
+            session_info={},
             file_name=mock_session["file_name"],
             metadata=metadata
         )
