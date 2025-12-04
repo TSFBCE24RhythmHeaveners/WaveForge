@@ -130,7 +130,17 @@ Each playlist item shows a status badge:
 ```javascript
 {
   type: 'SESSION_UPLOAD_COMPLETE',
-  sessionId: 'sess_123...'
+  sessionId: 'sess_123...',
+  fileName: 'Recording.webm',
+  metadata: {
+    name: 'Recording',
+    mimeType: 'video/webm',
+    extension: 'webm',
+    savedAt: '2025-12-04T12:00:00.000Z',
+    fileSize: 1234567,
+    manualUpload: true  // Present when user clicks upload button
+  },
+  totalChunks: 42
 }
 ```
 
@@ -206,14 +216,27 @@ const CONNECTION_CHECK_INTERVAL = 5000; // Check every 5 seconds when offline
 
 1. **Click Cloud Button:**
    ```javascript
+   // Metadata includes manualUpload flag to trigger assembly
+   const metadata = {
+     name: 'Recording',
+     mimeType: 'video/webm',
+     extension: 'webm',
+     savedAt: timestamp,
+     fileSize: blob.size,
+     manualUpload: true  // Triggers server-side assembly
+   };
    UploadManager.queueUpload(id, blob, fileName, metadata, sessionId);
    ```
 
 2. **Background Sync Registered:**
    - Upload continues even if tab closed
    - Re-opening tab shows current progress
+   - Service Worker preserves metadata before chunk deletion
 
 3. **Upload Complete:**
+   - `SESSION_UPLOAD_COMPLETE` event sent with metadata
+   - If `manualUpload: true`, triggers `/recording/complete` endpoint
+   - Server assembles chunks into final file
    - Badge shows "✓ SYNCED"
    - File available in playlist
 
