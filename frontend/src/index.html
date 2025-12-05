@@ -715,7 +715,7 @@
 
 <body class="min-h-screen flex flex-col items-center p-4">
     <!-- BITV 2.0: Skip to content link for keyboard navigation -->
-    <a href="#main-content" class="skip-to-content" data-i18n="ui.skipToContent">Zum Hauptinhalt springen</a>
+    <a href="#recording-controls" class="skip-to-content" data-i18n="ui.skipToContent">Zum Hauptmenü springen</a>
 
     <!-- Header & Visualizer -->
     <header class="w-full max-w-5xl mb-6 glass-panel overflow-hidden relative" role="banner">
@@ -804,8 +804,8 @@
                     </div>
                 </div>
 
-                <!-- Recording Controls - Centered Grid Layout -->
-                <div class="flex justify-center mb-6">
+                <!-- Recording Controls - Centered Grid Layout (Hauptmenü) -->
+                <div id="recording-controls" class="flex justify-center mb-6" tabindex="-1">
                     <div class="grid grid-cols-3 gap-3 w-full max-w-lg">
                         <button id="recordButton"
                             class="px-6 py-3 rounded border border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-white transition-all font-mono tracking-wider text-sm uppercase flex items-center justify-center gap-2"
@@ -4394,19 +4394,17 @@
 
                 mediaRecorder.start(1000);
 
-                isRecording = true;
-                isPaused = false;
-                document.getElementById('recordButton').classList.add('recording-active');
-                document.getElementById('recordButton').disabled = true;
-                document.getElementById('recordButton').setAttribute('tabindex', '-1');
-                document.getElementById('pauseButton').disabled = false;
-                document.getElementById('pauseButton').setAttribute('tabindex', '0');
-                document.getElementById('stopButton').disabled = false;
-                document.getElementById('stopButton').setAttribute('tabindex', '0');
-                startTimer();
-                applyInputEQ();
-                
-                // Initialize live upload indicator for this recording session
+            isRecording = true;
+            isPaused = false;
+            document.getElementById('recordButton').classList.add('recording-active');
+            document.getElementById('recordButton').disabled = true;
+            document.getElementById('recordButton').setAttribute('tabindex', '-1');
+            document.getElementById('pauseButton').disabled = false;
+            document.getElementById('pauseButton').setAttribute('tabindex', '0');
+            document.getElementById('stopButton').disabled = false;
+            document.getElementById('stopButton').setAttribute('tabindex', '0');
+            startTimer();
+            applyInputEQ();                // Initialize live upload indicator for this recording session
                 LiveUploadIndicator.onRecordingStart(currentSessionId);
             } catch (err) { console.error(err); showToast("Mic Error", true); }
         }
@@ -4420,21 +4418,19 @@
                     const tracks = inputSource.mediaStream.getTracks();
                     tracks.forEach(track => track.stop());
                 }
-                isRecording = false;
-                isPaused = false;
-                document.getElementById('recordButton').classList.remove('recording-active');
-                document.getElementById('recordButton').disabled = false;
-                document.getElementById('recordButton').setAttribute('tabindex', '0');
-                document.getElementById('pauseButton').disabled = true;
-                document.getElementById('pauseButton').setAttribute('tabindex', '-1');
-                document.getElementById('pauseButton').textContent = 'PAUSE';
-                document.getElementById('pauseButton').classList.remove('paused-active');
-                document.getElementById('stopButton').disabled = true;
-                document.getElementById('stopButton').setAttribute('tabindex', '-1');
-                stopTimer();
-                pausedTime = 0;
-                
-                // Stop live upload indicator
+            isRecording = false;
+            isPaused = false;
+            document.getElementById('recordButton').classList.remove('recording-active');
+            document.getElementById('recordButton').disabled = false;
+            document.getElementById('recordButton').setAttribute('tabindex', '0');
+            document.getElementById('pauseButton').disabled = true;
+            document.getElementById('pauseButton').setAttribute('tabindex', '-1');
+            document.getElementById('pauseButton').textContent = 'PAUSE';
+            document.getElementById('pauseButton').classList.remove('paused-active');
+            document.getElementById('stopButton').disabled = true;
+            document.getElementById('stopButton').setAttribute('tabindex', '-1');
+            stopTimer();
+            pausedTime = 0;                // Stop live upload indicator
                 LiveUploadIndicator.onRecordingStop();
             }
         }
