@@ -7,10 +7,11 @@
     <meta name="description"
         content="WaveForge DAW - Professionelle Audio-Aufnahmesoftware mit CrashGuard und Cloud-Synchronisation">
     <title>WaveForge DAW - Preview Edition</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="manifest" href="/manifest.json">
-    <script src="/tailwind.min.js"></script>
-    <link href="/fonts.css" rel="stylesheet">
+    <!-- Don't remove relative path and dot ./ for offline file usage -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="manifest" href="./manifest.json">
+    <script src="./tailwind.min.js"></script>
+    <link href="./fonts.css" rel="stylesheet">
 
     <style>
         :root {
@@ -566,6 +567,22 @@
             border-color: #ff0055 !important;
             color: white !important;
         }
+        
+        .paused-active {
+            animation: pulse-pause 2s infinite;
+            background-color: #f59e0b !important;
+            border-color: #f59e0b !important;
+            color: white !important;
+        }
+        
+        @keyframes pulse-pause {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+            }
+        }
 
         /* Select */
         .cyber-select {
@@ -791,6 +808,11 @@
                             aria-label="Aufnahme starten" data-i18n-attr="aria-label:aria.startRecording" type="button">
                             <span class="w-2 h-2 rounded-full bg-current" aria-hidden="true"></span> <span
                                 data-i18n="ui.rec">REC</span>
+                        </button>
+                        <button id="pauseButton"
+                            class="px-6 py-2 rounded border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 hover:text-white transition-all font-mono tracking-wider text-sm uppercase"
+                            disabled aria-label="Aufnahme pausieren" aria-disabled="true" type="button">
+                            <span data-i18n="ui.pause">PAUSE</span>
                         </button>
                         <button id="stopButton"
                             class="px-6 py-2 rounded border border-gray-600 text-gray-400 hover:bg-white/10 transition-all font-mono tracking-wider text-sm uppercase"
@@ -1628,7 +1650,7 @@
                 banner.className = 'fixed top-0 left-0 right-0 bg-yellow-900/90 border-b-2 border-yellow-500 text-yellow-200 px-4 py-2 z-[9999] text-center text-sm font-mono';
                 banner.innerHTML = `
                     <span class="font-bold">⚠ OFFLINE MODE:</span> 
-                    Running from file:// - Cloud features disabled. 
+                    Running from filesystem (file://) - SYNC to Server disabled. 
                     <a href="#" onclick="RuntimeEnvironment.showOfflineModeHelp(); return false;" 
                        class="underline hover:text-yellow-100 ml-2">Learn more</a>
                 `;
@@ -2361,6 +2383,32 @@
                     // Box stays visible to show upload progress even after recording stops
                 } catch (err) {
                     console.error('LiveUploadIndicator.onRecordingStop error:', err);
+                }
+            },
+            
+            onRecordingPause: function() {
+                try {
+                    // Update visual state to show recording is paused
+                    if (this.state === 'uploading') {
+                        // Switch to paused visual state but keep upload queue running
+                        const currentState = this.state;
+                        this.tooltip.innerHTML = `<span class="text-yellow-400">⏸</span> <span class="text-white font-bold">${this.uploadedChunks}/${this.totalChunks}</span> - Aufnahme pausiert`;
+                    }
+                    console.log('⏸ LiveUploadIndicator: Recording paused');
+                } catch (err) {
+                    console.error('LiveUploadIndicator.onRecordingPause error:', err);
+                }
+            },
+            
+            onRecordingResume: function() {
+                try {
+                    // Restore uploading state visual
+                    if (this.state === 'uploading' || this.state === 'paused') {
+                        this.updateTooltip();
+                    }
+                    console.log('▶ LiveUploadIndicator: Recording resumed');
+                } catch (err) {
+                    console.error('LiveUploadIndicator.onRecordingResume error:', err);
                 }
             }
         };
@@ -4176,7 +4224,7 @@
 
         // --- 4. AUDIO ENGINE ---
         let audioContext, analyser, dataArray, canvas, canvasCtx;
-        let inputSource, mediaRecorder, recordingNodes = {}, isRecording = false, startTime, timerInterval;
+        let inputSource, mediaRecorder, recordingNodes = {}, isRecording = false, isPaused = false, startTime, timerInterval, pausedTime = 0;
         let currentAudioBuffer = null, playbackSource = null, outputNodes = {}, isPlaying = false, playbackStartTime = 0, playbackOffset = 0, playbackRafId = null;
         let audioElement = null, mediaElementSource = null, currentBlobUrl = null;
 
@@ -4305,8 +4353,10 @@
                 mediaRecorder.start(1000);
 
                 isRecording = true;
+                isPaused = false;
                 document.getElementById('recordButton').classList.add('recording-active');
                 document.getElementById('recordButton').disabled = true;
+                document.getElementById('pauseButton').disabled = false;
                 document.getElementById('stopButton').disabled = false;
                 startTimer();
                 applyInputEQ();
@@ -4326,10 +4376,15 @@
                     tracks.forEach(track => track.stop());
                 }
                 isRecording = false;
+                isPaused = false;
                 document.getElementById('recordButton').classList.remove('recording-active');
                 document.getElementById('recordButton').disabled = false;
+                document.getElementById('pauseButton').disabled = true;
+                document.getElementById('pauseButton').textContent = 'PAUSE';
+                document.getElementById('pauseButton').classList.remove('paused-active');
                 document.getElementById('stopButton').disabled = true;
                 stopTimer();
+                pausedTime = 0;
                 
                 // Stop live upload indicator
                 LiveUploadIndicator.onRecordingStop();
@@ -4822,8 +4877,54 @@
             }
         }
 
-        function startTimer() { startTime = Date.now(); timerInterval = setInterval(() => { document.getElementById('timerDisplay').textContent = new Date(Date.now() - startTime).toISOString().substr(11, 8); }, 100); }
+        function startTimer() { startTime = Date.now() - pausedTime; timerInterval = setInterval(() => { document.getElementById('timerDisplay').textContent = new Date(Date.now() - startTime).toISOString().substr(11, 8); }, 100); }
         function stopTimer() { clearInterval(timerInterval); }
+        function pauseTimer() { 
+            clearInterval(timerInterval); 
+            pausedTime = Date.now() - startTime;
+        }
+        function resumeTimer() { 
+            startTime = Date.now() - pausedTime;
+            timerInterval = setInterval(() => { document.getElementById('timerDisplay').textContent = new Date(Date.now() - startTime).toISOString().substr(11, 8); }, 100); 
+        }
+
+        function pauseRecording() {
+            if (mediaRecorder && isRecording && !isPaused && mediaRecorder.state === 'recording') {
+                mediaRecorder.pause();
+                isPaused = true;
+                pauseTimer();
+                
+                // Update UI
+                const pauseBtn = document.getElementById('pauseButton');
+                pauseBtn.textContent = 'RESUME';
+                pauseBtn.classList.add('paused-active');
+                pauseBtn.setAttribute('aria-label', 'Aufnahme fortsetzen');
+                
+                // Pause live upload indicator
+                if (typeof LiveUploadIndicator !== 'undefined') {
+                    LiveUploadIndicator.onRecordingPause();
+                }
+                
+                console.log('⏸ Recording paused');
+            } else if (mediaRecorder && isRecording && isPaused && mediaRecorder.state === 'paused') {
+                mediaRecorder.resume();
+                isPaused = false;
+                resumeTimer();
+                
+                // Update UI
+                const pauseBtn = document.getElementById('pauseButton');
+                pauseBtn.textContent = 'PAUSE';
+                pauseBtn.classList.remove('paused-active');
+                pauseBtn.setAttribute('aria-label', 'Aufnahme pausieren');
+                
+                // Resume live upload indicator
+                if (typeof LiveUploadIndicator !== 'undefined') {
+                    LiveUploadIndicator.onRecordingResume();
+                }
+                
+                console.log('▶ Recording resumed');
+            }
+        }
 
         // DELETE MODAL FUNCTIONS
         function openDeleteModal(trackId, trackName) {
@@ -4895,6 +4996,7 @@
                 showToast('Database initialization failed!', true);
             });
             document.getElementById('recordButton').addEventListener('click', startRecording);
+            document.getElementById('pauseButton').addEventListener('click', pauseRecording);
             document.getElementById('stopButton').addEventListener('click', stopRecording);
             ['LowShelf', 'Peaking', 'HighShelf', 'Gain'].forEach(t => {
                 document.getElementById(`input${t}`).addEventListener('input', (e) => {
