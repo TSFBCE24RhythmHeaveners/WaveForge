@@ -4414,6 +4414,10 @@
             document.getElementById('pauseButton').setAttribute('tabindex', '0');
             document.getElementById('stopButton').disabled = false;
             document.getElementById('stopButton').setAttribute('tabindex', '0');
+            
+            // Auto-focus PAUSE button for efficient keyboard control
+            document.getElementById('pauseButton').focus();
+            
             startTimer();
             applyInputEQ();                // Initialize live upload indicator for this recording session
                 LiveUploadIndicator.onRecordingStart(currentSessionId);
