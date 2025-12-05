@@ -1679,6 +1679,216 @@
             };
         }
 
+        // --- SINGLE TAB GUARD (Prevents multiple simultaneous instances) ---
+        const SingleTabGuard = {
+            LOCK_KEY: 'waveforge_tab_lock',
+            LOCK_TIMEOUT: 5000, // 5 seconds
+            tabId: null,
+            lockCheckInterval: null,
+            
+            init: function() {
+                // Generate unique tab ID
+                this.tabId = `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Try to acquire lock
+                if (!this.tryAcquireLock()) {
+                    this.showMultiTabWarning();
+                    return false;
+                }
+                
+                // Refresh lock periodically
+                this.startLockRefresh();
+                
+                // Release lock on page unload
+                window.addEventListener('beforeunload', () => this.releaseLock());
+                
+                // Listen for storage changes (another tab trying to acquire lock)
+                window.addEventListener('storage', (e) => {
+                    if (e.key === this.LOCK_KEY) {
+                        const newLockData = e.newValue ? JSON.parse(e.newValue) : null;
+                        if (newLockData && newLockData.tabId !== this.tabId) {
+                            this.showMultiTabWarning();
+                        }
+                    }
+                });
+                
+                console.log('✅ SingleTabGuard: Lock acquired for tab:', this.tabId);
+                return true;
+            },
+            
+            tryAcquireLock: function() {
+                const existingLock = localStorage.getItem(this.LOCK_KEY);
+                
+                if (!existingLock) {
+                    // No lock exists, acquire it
+                    localStorage.setItem(this.LOCK_KEY, JSON.stringify({
+                        tabId: this.tabId,
+                        timestamp: Date.now()
+                    }));
+                    return true;
+                }
+                
+                try {
+                    const lock = JSON.parse(existingLock);
+                    const age = Date.now() - lock.timestamp;
+                    
+                    // If lock is older than timeout, it's stale - take over
+                    if (age > this.LOCK_TIMEOUT) {
+                        console.warn('⚠️ Stale lock detected, taking over');
+                        localStorage.setItem(this.LOCK_KEY, JSON.stringify({
+                            tabId: this.tabId,
+                            timestamp: Date.now()
+                        }));
+                        return true;
+                    }
+                    
+                    // Lock is active, cannot acquire
+                    return false;
+                    
+                } catch (e) {
+                    console.error('Error parsing lock:', e);
+                    // Corrupted lock, take over
+                    localStorage.setItem(this.LOCK_KEY, JSON.stringify({
+                        tabId: this.tabId,
+                        timestamp: Date.now()
+                    }));
+                    return true;
+                }
+            },
+            
+            startLockRefresh: function() {
+                // Refresh lock every 2 seconds to prevent timeout
+                this.lockCheckInterval = setInterval(() => {
+                    const lock = localStorage.getItem(this.LOCK_KEY);
+                    
+                    if (lock) {
+                        try {
+                            const lockData = JSON.parse(lock);
+                            if (lockData.tabId === this.tabId) {
+                                // Update timestamp
+                                localStorage.setItem(this.LOCK_KEY, JSON.stringify({
+                                    tabId: this.tabId,
+                                    timestamp: Date.now()
+                                }));
+                            } else {
+                                // Another tab took over the lock
+                                this.showMultiTabWarning();
+                            }
+                        } catch (e) {
+                            console.error('Error refreshing lock:', e);
+                        }
+                    } else {
+                        // Lock was removed, try to reacquire
+                        if (!this.tryAcquireLock()) {
+                            this.showMultiTabWarning();
+                        }
+                    }
+                }, 2000);
+            },
+            
+            releaseLock: function() {
+                const lock = localStorage.getItem(this.LOCK_KEY);
+                if (lock) {
+                    try {
+                        const lockData = JSON.parse(lock);
+                        if (lockData.tabId === this.tabId) {
+                            localStorage.removeItem(this.LOCK_KEY);
+                            console.log('✅ Lock released for tab:', this.tabId);
+                        }
+                    } catch (e) {
+                        console.error('Error releasing lock:', e);
+                    }
+                }
+                
+                if (this.lockCheckInterval) {
+                    clearInterval(this.lockCheckInterval);
+                }
+            },
+            
+            showMultiTabWarning: function() {
+                // Stop lock refresh
+                if (this.lockCheckInterval) {
+                    clearInterval(this.lockCheckInterval);
+                    this.lockCheckInterval = null;
+                }
+                
+                // Disable all UI interactions
+                document.body.style.pointerEvents = 'none';
+                document.body.style.opacity = '0.3';
+                
+                // Show modal overlay
+                const overlay = document.createElement('div');
+                overlay.id = 'multiTabWarning';
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.95);
+                    z-index: 999999;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                
+                overlay.innerHTML = `
+                    <div style="background: linear-gradient(135deg, #1e1e2e 0%, #0a0a14 100%); padding: 40px; border-radius: 16px; max-width: 600px; border: 2px solid #ff3333; box-shadow: 0 0 40px rgba(255, 51, 51, 0.4); text-align: center;">
+                        <div style="font-size: 64px; margin-bottom: 20px; animation: pulse 1.5s ease-in-out infinite;">⚠️</div>
+                        <h2 style="color: #ff3333; font-size: 28px; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px;">
+                            MULTIPLE TABS DETECTED
+                        </h2>
+                        <div style="color: #d1d5db; font-size: 16px; line-height: 1.8; margin-bottom: 30px;">
+                            <p style="margin-bottom: 16px;">WaveForge Pro kann nur in <strong style="color: white;">einem Browser-Tab</strong> gleichzeitig ausgeführt werden.</p>
+                            <p style="margin-bottom: 16px;">Dies verhindert Datenkonflikte und schützt Ihre Aufnahmen.</p>
+                            <div style="background: rgba(255, 51, 51, 0.1); border-left: 3px solid #ff3333; padding: 16px; margin: 20px 0; text-align: left; border-radius: 4px;">
+                                <strong style="color: #ff3333;">⚠️ WICHTIG:</strong>
+                                <ul style="margin: 12px 0 0 20px; padding: 0;">
+                                    <li style="margin-bottom: 8px;">Schließen Sie <strong>alle anderen Tabs</strong> mit WaveForge Pro</li>
+                                    <li style="margin-bottom: 8px;">Oder schließen Sie <strong>diesen Tab</strong>, wenn Sie in einem anderen Tab arbeiten möchten</li>
+                                    <li>Laden Sie die Seite danach neu</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <button onclick="window.location.reload()" style="background: #ff3333; color: white; border: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; box-shadow: 0 4px 15px rgba(255, 51, 51, 0.3);" onmouseover="this.style.background='#cc0000'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='#ff3333'; this.style.transform='scale(1)'">
+                            SEITE NEU LADEN
+                        </button>
+                        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #374151;">
+                            <p style="color: #9ca3af; font-size: 12px; font-family: monospace;">
+                                Tab ID: ${this.tabId}<br>
+                                Konflikt erkannt: ${new Date().toLocaleTimeString()}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                
+                // Add pulse animation
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes pulse {
+                        0%, 100% { transform: scale(1); opacity: 1; }
+                        50% { transform: scale(1.1); opacity: 0.8; }
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                document.body.appendChild(overlay);
+                
+                console.error('❌ Multiple tabs detected! This instance is now locked.');
+            }
+        };
+
+        // Initialize Single Tab Guard BEFORE any other initialization
+        try {
+            const tabLockAcquired = SingleTabGuard.init();
+            if (!tabLockAcquired) {
+                console.error('❌ Could not acquire tab lock - another instance is running');
+                // Don't throw error - showMultiTabWarning already displayed
+            }
+        } catch (err) {
+            console.error('❌ SingleTabGuard initialization failed:', err);
+        }
+
         // --- 2. FEATURE FLAGS ---
         
         const FeatureFlags = {
