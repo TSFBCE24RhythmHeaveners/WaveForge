@@ -606,6 +606,11 @@
             vertical-align: middle;
             white-space: nowrap;
         }
+        
+        /* Hide upload badges in offline mode (will be hidden by upload-progress-element targeting) */
+        .upload-status-badge.upload-progress-element {
+            display: none;
+        }
 
         .status-uploading {
             background: rgba(59, 130, 246, 0.2);
@@ -2983,7 +2988,7 @@
                     // Add new badge if upload exists
                     if (upload) {
                         const badge = document.createElement('span');
-                        badge.className = `upload-status-badge status-${upload.status}`;
+                        badge.className = `upload-status-badge upload-progress-element status-${upload.status}`;
                         badge.setAttribute('role', 'status');
                         badge.setAttribute('aria-live', 'polite');
                         
