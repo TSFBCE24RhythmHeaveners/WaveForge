@@ -4436,7 +4436,7 @@
             document.getElementById('recordButton').setAttribute('tabindex', '0');
             document.getElementById('pauseButton').disabled = true;
             document.getElementById('pauseButton').setAttribute('tabindex', '-1');
-            document.getElementById('pauseButton').textContent = 'PAUSE';
+            document.getElementById('pauseButton').querySelector('span[data-i18n]').textContent = 'PAUSE';
             document.getElementById('pauseButton').classList.remove('paused-active');
             document.getElementById('stopButton').disabled = true;
             document.getElementById('stopButton').setAttribute('tabindex', '-1');
@@ -4971,7 +4971,7 @@
                 const pauseBtn = document.getElementById('pauseButton');
                 
                 recBtn.classList.remove('recording-active'); // Stop REC animation
-                pauseBtn.textContent = 'RESUME';
+                pauseBtn.querySelector('span[data-i18n]').textContent = 'RESUME';
                 pauseBtn.classList.add('paused-active'); // Start PAUSE blink
                 pauseBtn.setAttribute('aria-label', 'Aufnahme fortsetzen');
                 
@@ -4994,7 +4994,7 @@
                 const pauseBtn = document.getElementById('pauseButton');
                 
                 recBtn.classList.add('recording-active'); // Restart REC animation
-                pauseBtn.textContent = 'PAUSE';
+                pauseBtn.querySelector('span[data-i18n]').textContent = 'PAUSE';
                 pauseBtn.classList.remove('paused-active'); // Stop PAUSE blink
                 pauseBtn.setAttribute('aria-label', 'Aufnahme pausieren');
                 
