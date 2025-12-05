@@ -4633,8 +4633,13 @@
             document.getElementById('stopButton').disabled = true;
             document.getElementById('stopButton').setAttribute('tabindex', '-1');
             stopTimer();
-            pausedTime = 0;                // Stop live upload indicator
-                LiveUploadIndicator.onRecordingStop();
+            stopVisualizer(); // CRITICAL: Stop visualizer animation to free CPU
+            pausedTime = 0;
+            
+            // Stop live upload indicator
+            LiveUploadIndicator.onRecordingStop();
+            
+            console.log('⏹ Recording stopped - all animations stopped (Timer + Visualizer)');
             }
         }
 
