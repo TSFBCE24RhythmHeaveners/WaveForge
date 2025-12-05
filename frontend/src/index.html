@@ -4426,8 +4426,15 @@
         }
 
         function deleteTrackFromDB(id) {
+            if (!db) {
+                console.error('❌ Cannot delete track - database not initialized');
+                showToast("Database not ready", true);
+                return;
+            }
+            
             db.transaction([STORE_RECORDINGS], 'readwrite').objectStore(STORE_RECORDINGS).delete(id).onsuccess = () => {
-                showToast("Track deleted"); loadTracksFromDB();
+                showToast("Track deleted"); 
+                loadTracksFromDB();
             };
         }
 
@@ -4499,7 +4506,7 @@
         function stopVisualizer() {
             visualizerActive = false;
             if (visualizerAnimationId !== null) {
-                cancelAnimationFrame(visualizerAnimationId);
+                PerformanceMonitor.clearAnimation(visualizerAnimationId, 'Visualizer');
                 visualizerAnimationId = null;
                 console.log('✓ Visualizer animation stopped (CPU-friendly)');
             }
@@ -5251,27 +5258,52 @@
 
         // DELETE MODAL FUNCTIONS
         function openDeleteModal(trackId, trackName) {
-            lastFocusedElement = document.activeElement; // Save current focus
-            deleteModal = document.getElementById('deleteModal');
-            trackToDelete = trackId;
-            document.getElementById('deleteRecordingName').textContent = trackName;
-            deleteModal.style.display = 'flex';
-            deleteModal.classList.add('modal-open');
-            deleteModal.setAttribute('aria-hidden', 'false');
-            setTimeout(() => {
-                trapFocus(deleteModal); // Enable focus trap
-                // Focus modal title
-                const modalTitle = deleteModal.querySelector('#deleteModalTitle');
-                if (modalTitle) modalTitle.focus();
-            }, 10);
+            console.log('🗑️ Opening delete modal for:', trackId, trackName);
+            try {
+                lastFocusedElement = document.activeElement; // Save current focus
+                const modalElement = document.getElementById('deleteModal');
+                
+                if (!modalElement) {
+                    console.error('❌ Delete modal not found in DOM!');
+                    return;
+                }
+                
+                // Update global reference (needed for closeDeleteModal)
+                deleteModal = modalElement;
+                
+                trackToDelete = trackId;
+                const recordingNameEl = document.getElementById('deleteRecordingName');
+                if (recordingNameEl) {
+                    recordingNameEl.textContent = trackName;
+                }
+                
+                modalElement.style.display = 'flex';
+                modalElement.classList.add('modal-open');
+                modalElement.setAttribute('aria-hidden', 'false');
+                console.log('✓ Delete modal opened successfully', {
+                    display: modalElement.style.display,
+                    classList: modalElement.className
+                });
+                
+                setTimeout(() => {
+                    trapFocus(modalElement); // Enable focus trap
+                    // Focus modal title
+                    const modalTitle = modalElement.querySelector('#deleteModalTitle');
+                    if (modalTitle) modalTitle.focus();
+                }, 10);
+            } catch (err) {
+                console.error('❌ Error opening delete modal:', err);
+            }
         }
 
         function closeDeleteModal() {
-            if (deleteModal) {
-                deleteModal.style.display = 'none';
-                deleteModal.classList.remove('modal-open');
-                deleteModal.setAttribute('aria-hidden', 'true');
+            const modalElement = document.getElementById('deleteModal');
+            if (modalElement) {
+                modalElement.style.display = 'none';
+                modalElement.classList.remove('modal-open');
+                modalElement.setAttribute('aria-hidden', 'true');
                 trackToDelete = null;
+                deleteModal = null; // Reset global reference
                 // Restore focus
                 if (lastFocusedElement) {
                     lastFocusedElement.focus();
@@ -5358,6 +5390,14 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => {
+            // FIX: Move deleteModal to body root level if it's nested incorrectly
+            const deleteModalEl = document.getElementById('deleteModal');
+            if (deleteModalEl && deleteModalEl.parentElement && deleteModalEl.parentElement.id === 'settingsModal') {
+                console.warn('⚠️ deleteModal incorrectly nested in settingsModal - moving to body');
+                document.body.appendChild(deleteModalEl);
+                console.log('✓ deleteModal moved to body root level');
+            }
+            
             initDB().catch(err => {
                 console.error('Failed to initialize database:', err);
                 showToast('Database initialization failed!', true);
