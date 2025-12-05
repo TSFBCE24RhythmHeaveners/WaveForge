@@ -529,6 +529,24 @@
             outline: 2px solid var(--neon-cyan);
             outline-offset: 2px;
         }
+        
+        /* Force focus ring to be visible for programmatic focus (e.g., auto-focus) */
+        button:focus,
+        input:focus,
+        select:focus,
+        a:focus {
+            outline: 2px solid var(--neon-cyan);
+            outline-offset: 2px;
+        }
+        
+        /* Recording controls - enhanced focus visibility */
+        #recordButton:focus,
+        #pauseButton:focus,
+        #stopButton:focus {
+            outline: 3px solid var(--neon-cyan);
+            outline-offset: 3px;
+            box-shadow: 0 0 0 5px rgba(0, 243, 255, 0.2);
+        }
 
         /* Skip to content link - BITV 2.0 compliance */
         .skip-to-content {
@@ -986,7 +1004,7 @@
                     <option value="2">2x</option>
                 </select>
             </div>
-            <button onclick="closeDock()" class="player-btn text-xs w-6 h-6" aria-label="Player schließen"
+            <button onclick="closeDock()" class="player-btn text-xs w-6 h-6" title="Player schließen" aria-label="Player schließen"
                 type="button">×</button>
         </div>
         <div class="flex items-center gap-3 w-full mb-1">
@@ -1003,15 +1021,15 @@
             <span id="totalTime" class="text-xs font-mono text-gray-400 w-12" aria-label="Gesamtdauer">00:00</span>
         </div>
         <div class="flex justify-center items-center gap-4">
-            <button onclick="playerSeekStart()" class="player-btn text-xs" aria-label="Zum Anfang springen"
+            <button onclick="playerSeekStart()" class="player-btn text-xs" title="Zum Anfang springen" aria-label="Zum Anfang springen"
                 type="button">|&lt;&lt;</button>
-                    <button onclick="playerSkip(-10)" class="player-btn text-xs" aria-label="10 Sekunden zurück"
+                    <button onclick="playerSkip(-10)" class="player-btn text-xs" title="10 Sekunden zurück" aria-label="10 Sekunden zurück"
                         type="button">-10s</button>
                     <button id="dockPlayBtn" onclick="togglePlayPause()" class="player-btn main-play"
-                        aria-label="Abspielen" type="button">▶</button>
-                    <button onclick="playerSkip(10)" class="player-btn text-xs" aria-label="10 Sekunden vorwärts"
+                        title="Abspielen" aria-label="Abspielen" type="button">▶</button>
+                    <button onclick="playerSkip(10)" class="player-btn text-xs" title="10 Sekunden vorwärts" aria-label="10 Sekunden vorwärts"
                         type="button">+10s</button>
-                    <button onclick="playerSeekEnd()" class="player-btn text-xs" aria-label="Zum Ende springen"
+                    <button onclick="playerSeekEnd()" class="player-btn text-xs" title="Zum Ende springen" aria-label="Zum Ende springen"
                         type="button">&gt;&gt;|</button>
         </div>
         <div class="text-center">
@@ -4230,6 +4248,15 @@
                 loadTracksFromDB();
                 closeSaveModal();
                 
+                // Auto-focus first Play button in playlist for efficient keyboard navigation
+                setTimeout(() => {
+                    const firstPlayBtn = document.querySelector('[class*="play-btn-"]');
+                    if (firstPlayBtn) {
+                        firstPlayBtn.focus();
+                        console.log('✓ Auto-focused first Play button in playlist');
+                    }
+                }, 300); // Wait for modal close animation + playlist render
+                
                 // CRITICAL: Trigger UI update AFTER dialog is closed AND playlist is rendered
                 // Multiple timeouts to ensure DOM is ready and dialog animation is complete
                 if (savedSessionId && typeof UploadCoordinator !== 'undefined') {
@@ -4647,6 +4674,18 @@
                 const dock = document.getElementById('playerDock');
                 dock.classList.add('active');
 
+                // Save last focused element before opening player
+                dock._lastFocusedElement = document.activeElement;
+
+                // Auto-focus Play button for keyboard navigation
+                setTimeout(() => {
+                    const playBtn = document.getElementById('dockPlayBtn');
+                    if (playBtn) {
+                        playBtn.focus();
+                        console.log('✓ Auto-focused player Play button');
+                    }
+                }, 100);
+
                 document.getElementById('nowPlayingText').textContent = name;
                 playbackOffset = 0;
                 updateDurationDisplay(audioElement.duration);
@@ -4887,17 +4926,17 @@
 
                 // CONDITIONAL: Show upload button only if cloud upload is available
                 const uploadButtonHTML = (!ENV || ENV.cloudUpload !== false)
-                    ? `<button class="up-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-cyan-400 hover:text-cyan-400 upload-icon transition-all" title="Upload to Cloud" aria-label="In Cloud hochladen: ${t.name}" type="button"><span aria-hidden="true">☁</span></button>`
+                    ? `<button class="up-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-cyan-400 hover:text-cyan-400 upload-icon transition-all" title="In Cloud hochladen: ${t.name}" aria-label="In Cloud hochladen: ${t.name}" type="button"><span aria-hidden="true">☁</span></button>`
                     : ``; // Hide completely in offline mode
 
                 el.innerHTML = `
                     <div class="flex justify-between items-center w-full">
                         <div><div class="font-bold text-gray-200 group-hover:text-cyan-400 transition-colors filename">${t.name}</div><div class="text-[10px] ${col} font-mono">${date} | ${ext.toUpperCase()}</div></div>
                         <div class="flex gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                            <button class="play-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-cyan-400 hover:text-cyan-400 hover:shadow-[0_0_10px_rgba(0,243,255,0.3)] transition-all" aria-label="Abspielen: ${t.name}" type="button"><span aria-hidden="true">▶</span></button>
+                            <button class="play-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-cyan-400 hover:text-cyan-400 hover:shadow-[0_0_10px_rgba(0,243,255,0.3)] transition-all" title="Abspielen: ${t.name}" aria-label="Abspielen: ${t.name}" type="button"><span aria-hidden="true">▶</span></button>
                             ${uploadButtonHTML}
-                            <button class="dl-btn-${t.id} px-2 h-8 rounded border border-gray-600 flex items-center justify-center hover:border-green-400 hover:text-green-400 text-[10px] font-mono transition-all" aria-label="Herunterladen: ${t.name}" type="button">DL</button>
-                            <button class="del-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-red-500 hover:text-red-500 transition-all" aria-label="Löschen: ${t.name}" type="button"><span aria-hidden="true">×</span></button>
+                            <button class="dl-btn-${t.id} px-2 h-8 rounded border border-gray-600 flex items-center justify-center hover:border-green-400 hover:text-green-400 text-[10px] font-mono transition-all" title="Herunterladen: ${t.name}" aria-label="Herunterladen: ${t.name}" type="button">DL</button>
+                            <button class="del-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-red-500 hover:text-red-500 transition-all" title="Löschen: ${t.name}" aria-label="Löschen: ${t.name}" type="button"><span aria-hidden="true">×</span></button>
                         </div>
                     </div>
                     <div class="upload-status-bar upload-progress-element" id="progress-bar-${t.id}"><div class="upload-status-fill" id="progress-${t.id}"></div></div>
@@ -5076,7 +5115,51 @@
             // Reset playback speed
             currentPlaybackRate = 1.0;
             document.getElementById('playbackSpeed').value = '1';
+            
+            // Restore focus to last focused element (playlist)
+            if (dock._lastFocusedElement) {
+                dock._lastFocusedElement.focus();
+                dock._lastFocusedElement = null;
+                console.log('✓ Focus restored to playlist');
+            }
         }
+
+        // Focus trap for player dock - keep Tab navigation within player controls
+        document.addEventListener('keydown', (e) => {
+            const playerDock = document.getElementById('playerDock');
+            if (!playerDock || !playerDock.classList.contains('active')) return;
+            
+            // ESC key - close player dock and stop playback
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeDock();
+                console.log('✓ Player closed with ESC key');
+                return;
+            }
+            
+            if (e.key === 'Tab') {
+                const focusableElements = playerDock.querySelectorAll(
+                    'button:not([disabled]), input:not([disabled]), select:not([disabled])'
+                );
+                const focusableArray = Array.from(focusableElements);
+                const firstElement = focusableArray[0];
+                const lastElement = focusableArray[focusableArray.length - 1];
+                
+                if (e.shiftKey) {
+                    // Shift+Tab: If on first element, wrap to last
+                    if (document.activeElement === firstElement) {
+                        e.preventDefault();
+                        lastElement.focus();
+                    }
+                } else {
+                    // Tab: If on last element, wrap to first
+                    if (document.activeElement === lastElement) {
+                        e.preventDefault();
+                        firstElement.focus();
+                    }
+                }
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
             initDB().catch(err => {
