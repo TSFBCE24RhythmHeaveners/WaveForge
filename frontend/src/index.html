@@ -901,9 +901,9 @@
                             data-i18n="format.detecting">FORMAT: DETECTING...</div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <!-- Live Upload Indicator: Replaces UPLOADING text -->
+                        <!-- Live Upload Indicator: Replaces UPLOADING text (hidden in offline mode) -->
                         <button id="liveUploadIndicator" 
-                            class="text-[10px] px-2 py-1 rounded border cursor-pointer transition-all hover:opacity-80 hidden"
+                            class="text-[10px] px-2 py-1 rounded border cursor-pointer transition-all hover:opacity-80 hidden upload-progress-element"
                             role="button" 
                             aria-label="Upload status"
                             tabindex="0"
@@ -1607,6 +1607,10 @@
                 const cloudSyncBox = document.getElementById('cloudSyncBox');
                 if (uploadSettingsBtn) uploadSettingsBtn.style.display = 'none';
                 if (cloudSyncBox) cloudSyncBox.style.display = 'none';
+                
+                // Hide all upload progress elements
+                const progressElements = document.querySelectorAll('.upload-progress-element');
+                progressElements.forEach(el => el.style.display = 'none');
                 
                 // Show persistent warning banner for file:// mode
                 const banner = document.createElement('div');
@@ -4545,8 +4549,8 @@
                             <button class="del-btn-${t.id} w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center hover:border-red-500 hover:text-red-500 transition-all" aria-label="Löschen: ${t.name}" type="button"><span aria-hidden="true">×</span></button>
                         </div>
                     </div>
-                    <div class="upload-status-bar" id="progress-bar-${t.id}"><div class="upload-status-fill" id="progress-${t.id}"></div></div>
-                    <div class="upload-status-expanded" id="upload-status-${t.id}">
+                    <div class="upload-status-bar upload-progress-element" id="progress-bar-${t.id}"><div class="upload-status-fill" id="progress-${t.id}"></div></div>
+                    <div class="upload-status-expanded upload-progress-element" id="upload-status-${t.id}">
                         <!-- Dynamically filled by UploadCoordinator -->
                     </div>
                 `;
