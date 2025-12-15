@@ -134,10 +134,27 @@
             height: 100%;
             background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(5px);
-            z-index: 150;
+            z-index: 99999 !important;
             display: none;
             justify-content: center;
             align-items: center;
+        }
+
+        /* Info-Modal: Sichtbarkeit erzwingen */
+        #infoModal.info-modal-open {
+            display: flex !important;
+            visibility: visible !important;
+            z-index: 100000 !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+
+        .info-modal-container.info-modal-open {
+            display: flex !important;
+            visibility: visible !important;
+            z-index: 100000 !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
         }
 
         .modal-content {
@@ -152,7 +169,27 @@
             transition: transform 0.2s;
         }
 
+        .modal-open {
+            display: flex !important;
+        }
+
         .modal-open .modal-content {
+            transform: scale(1);
+        }
+
+        .info-modal-open {
+            display: flex !important;
+        }
+
+        .info-modal-open .modal-content {
+            transform: scale(1);
+        }
+
+        .settings-modal-open {
+            display: flex !important;
+        }
+
+        .settings-modal-open .modal-content {
             transform: scale(1);
         }
 
@@ -182,9 +219,41 @@
             box-shadow: 0 0 40px rgba(255, 215, 0, 0.15);
         }
 
+        .info-modal-container .modal-content {
+            max-width: 800px;
+            position: relative;
+            background: #0a0a1a;
+            padding: 0 2rem 2rem 2rem;
+            box-sizing: border-box;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-modal-container .modal-content {
+            max-width: 800px;
+        }
+
         .license-header {
             color: #ffd700;
             border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .info-modal-header {
+            position: sticky;
+            top: 0;
+            background: #0a0a1a;
+            padding: 1.25rem 2rem;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+            z-index: 20;
+        }
+
+        .info-modal-body {
+            flex: 1 1 auto;
+            max-height: calc(85vh - 80px);
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            scrollbar-gutter: stable;
         }
 
         /* DELETE MODAL SPECIFIC */
@@ -762,21 +831,21 @@
                         <option value="de">🇩🇪 DE</option>
                         <option value="en">🇬🇧 EN</option>
                     </select>
-                    <!-- Info Button -->
-                    <button onclick="openInfoModal()"
-                        class="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors flex items-center gap-1 border border-gray-800 rounded px-2 py-0.5 hover:border-cyan-500/50"
-                        aria-label="Informationen und Compliance anzeigen" data-i18n-attr="aria-label:aria.info"
-                        type="button">
-                        <span class="text-cyan-400" aria-hidden="true">ℹ</span> <span data-i18n="ui.info">INFO</span>
-                    </button>
                     <!-- Settings Button (hidden in offline mode) -->
-                    <button onclick="openSettingsModal()"
-                        id="settingsBtn"
-                        class="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors flex items-center gap-1 border border-gray-800 rounded px-2 py-0.5 hover:border-cyan-500/50"
+                    <button id="settingsBtn"
+                        class="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors inline-flex items-center gap-1 border border-gray-800 rounded px-3 py-1 hover:border-cyan-500/50"
+                        style="background: rgba(0,255,255,0.3);"
                         aria-label="Einstellungen öffnen" data-i18n-attr="aria-label:aria.settings"
                         type="button">
                         <span class="text-cyan-400" aria-hidden="true">⚙</span> <span
                             data-i18n="ui.settings">SETTINGS</span>
+                    </button>
+                    <button id="infoBtn"
+                        class="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors inline-flex items-center gap-1 border border-gray-800 rounded px-3 py-1 hover:border-cyan-500/50"
+                        style="background: rgba(0,255,255,0.3);"
+                        aria-label="Informationen und Compliance anzeigen" data-i18n-attr="aria-label:aria.info"
+                        type="button">
+                        <span class="text-cyan-400" aria-hidden="true">ℹ</span> <span data-i18n="ui.info">INFO</span>
                     </button>
                 </div>
                 <div id="statusIndicator" class="text-xs digital-text text-cyan-400" role="status" aria-live="polite"
@@ -1103,7 +1172,7 @@
     </div>
 
     <!-- SETTINGS MODAL -->
-    <div id="settingsModal" class="modal-overlay license-modal" aria-hidden="true" style="display: none;">
+    <div id="settingsModal" class="modal-overlay settings-modal-container" aria-hidden="true" style="display: none;">
         <div class="modal-content text-gray-200 font-sans max-w-2xl w-full" role="dialog" aria-modal="true"
             aria-labelledby="settingsModalTitle" aria-describedby="settingsDesc">
             <div class="flex justify-between items-start mb-6 pb-3 border-b border-gray-700">
@@ -1232,15 +1301,17 @@
     </div>
 
     <!-- INFO MODAL -->
-    <div id="infoModal" class="modal-overlay license-modal" aria-hidden="true">
-        <div class="modal-content text-gray-200 font-sans max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true"
+    <div id="infoModal" class="modal-overlay info-modal-container" aria-hidden="true" style="display: none;">
+        <div class="modal-content text-gray-200 font-sans max-h-[90vh]" role="dialog" aria-modal="true"
             aria-labelledby="infoModalTitle">
-            <div class="flex justify-between items-start mb-6 license-header pb-3 sticky top-0 bg-gray-900 z-10">
+            <div class="flex justify-between items-start mb-6 license-header info-modal-header pb-3 sticky top-0 z-10">
                 <h2 id="infoModalTitle" class="text-xl font-bold font-mono tracking-widest text-cyan-400">WAVEFORGE PRO
                     - INFO</h2>
                 <button onclick="closeInfoModal()" class="text-gray-500 hover:text-white text-2xl leading-none"
                     aria-label="Informationen schließen" type="button">&times;</button>
             </div>
+
+            <div class="info-modal-body">
 
             <!-- INTRODUCTION -->
             <div class="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-800/40 p-5 rounded-lg mb-6">
@@ -1656,6 +1727,7 @@
                 <button onclick="closeInfoModal()"
                     class="px-6 py-2 rounded border border-cyan-600/50 text-cyan-400 hover:bg-cyan-600/10 text-xs font-bold tracking-wider"
                     aria-label="Informationen schließen" type="button">SCHLIESSEN</button>
+            </div>
             </div>
         </div>
     </div>
@@ -2075,7 +2147,7 @@
         // EMBEDDED SERVICE WORKER CODE TO FIX BLOB URL ISSUES & UPLOAD LOGIC
         const SW_CODE = `
             const DB_NAME = 'WaveForgeDB_V4';
-            const DB_VERSION = 3;
+            const DB_VERSION = 4;
             const STORE_UPLOAD_QUEUE = 'upload_queue';
 
             function openDB() {
@@ -2420,7 +2492,7 @@
                     if (this.state === 'disabled' || this.state === 'hidden') return;
                     
                     const db = await new Promise((resolve, reject) => {
-                        const req = indexedDB.open('WaveForgeDB_V4', 3);
+                        const req = indexedDB.open('WaveForgeDB_V4', 4);
                         req.onsuccess = e => resolve(e.target.result);
                         req.onerror = e => reject(e);
                     });
@@ -2617,30 +2689,82 @@
             }
         });
 
-        const infoModal = document.getElementById('infoModal');
+        let infoModalJustOpened = false;
+
         function openInfoModal() {
-            lastFocusedElement = document.activeElement; // Save current focus
-            infoModal.style.display = 'flex';
+            console.log('openInfoModal called');
+            // Immer zuerst beide Modals schließen
+            closeSettingsModal(true); // true = force, keine Animation
+
+            const infoModal = document.getElementById('infoModal');
+            if (!infoModal) {
+                console.error('infoModal not found');
+                return;
+            }
+            // Stelle sicher, dass der Modal direkt im Body hängt (keine geerbten display:none Container)
+            if (infoModal.parentElement !== document.body) {
+                document.body.appendChild(infoModal);
+            }
+            lastFocusedElement = document.activeElement;
+            infoModal.style.setProperty('display', 'flex', 'important');
             infoModal.setAttribute('aria-hidden', 'false');
+            infoModal.style.setProperty('visibility', 'visible', 'important');
+            infoModal.style.setProperty('opacity', '1', 'important');
+            infoModal.style.setProperty('pointer-events', 'auto', 'important');
+            infoModal.classList.add('info-modal-open', 'modal-open');
+            infoModalJustOpened = true;
+            // Fallback: erzwinge Anzeige, falls CSS blockiert
+            const cs = window.getComputedStyle(infoModal);
+            if (cs.display !== 'flex') infoModal.style.display = 'flex';
+            if (cs.visibility === 'hidden') infoModal.style.visibility = 'visible';
+            const modalContent = infoModal.querySelector('.modal-content');
+            const rect = infoModal.getBoundingClientRect();
+            const rectContent = modalContent ? modalContent.getBoundingClientRect() : null;
+            console.log('infoModal styles after open:', {
+                inline: infoModal.style.cssText,
+                computedDisplay: cs.display,
+                computedVisibility: cs.visibility,
+                computedOpacity: cs.opacity,
+                computedPointerEvents: cs.pointerEvents,
+                rect,
+                rectContent
+            });
             setTimeout(() => {
-                infoModal.classList.add('modal-open');
-                trapFocus(infoModal); // Enable focus trap
-                // Focus modal title for screen readers
-                const modalTitle = infoModal.querySelector('#infoModalTitle');
-                if (modalTitle) modalTitle.focus();
+                infoModal.classList.add('info-modal-open');
             }, 10);
+            trapFocus(infoModal);
+            const modalTitle = infoModal.querySelector('#infoModalTitle');
+            if (modalTitle) modalTitle.focus();
         }
         function closeInfoModal() {
-            infoModal.classList.remove('modal-open');
+            // Optionaler force-Parameter: sofort schließen ohne Animation
+            let force = false;
+            if (arguments.length > 0) force = arguments[0];
+            console.log('closeInfoModal called', force);
+            if (infoModalJustOpened && force === true) {
+                infoModalJustOpened = false;
+                return;
+            }
+            const infoModal = document.getElementById('infoModal');
+            if (!infoModal) return;
+            infoModal.classList.remove('info-modal-open');
             infoModal.setAttribute('aria-hidden', 'true');
-            setTimeout(() => {
-                infoModal.style.display = 'none';
-                // Restore focus to element that opened the modal
-                if (lastFocusedElement) {
-                    lastFocusedElement.focus();
-                    lastFocusedElement = null;
-                }
-            }, 200);
+            infoModal.style.setProperty('visibility', 'hidden', 'important');
+            infoModal.style.setProperty('opacity', '0', 'important');
+            infoModal.style.setProperty('pointer-events', 'none', 'important');
+            infoModal.classList.remove('modal-open');
+            if (force) {
+                infoModal.style.setProperty('display', 'none', 'important');
+            } else {
+                setTimeout(() => {
+                    infoModal.style.setProperty('display', 'none', 'important');
+                }, 200);
+            }
+            infoModalJustOpened = false;
+            if (lastFocusedElement) {
+                lastFocusedElement.focus();
+                lastFocusedElement = null;
+            }
         }
 
         function updateFormatWarning() {
@@ -2760,7 +2884,7 @@
                 this.retryIntervalId = setInterval(async () => {
                     if (navigator.onLine) {
                         const db = await new Promise((resolve) => {
-                            const req = indexedDB.open('WaveForgeDB_V4', 3);
+                            const req = indexedDB.open('WaveForgeDB_V4', 4);
                             req.onsuccess = e => resolve(e.target.result);
                             req.onerror = () => resolve(null);
                         });
@@ -2809,7 +2933,7 @@
                 const uploadSessionId = sessionId || `manual_${Date.now()}`;
 
                 const db = await new Promise((resolve, reject) => {
-                    const req = indexedDB.open('WaveForgeDB_V4', 3);
+                    const req = indexedDB.open('WaveForgeDB_V4', 4);
                     req.onsuccess = e => resolve(e.target.result);
                     req.onerror = e => reject(e);
                 });
@@ -2984,7 +3108,7 @@
             async inspectQueue() {
                 try {
                     const db = await new Promise((resolve, reject) => {
-                        const req = indexedDB.open('WaveForgeDB_V4', 3);
+                        const req = indexedDB.open('WaveForgeDB_V4', 4);
                         req.onsuccess = e => resolve(e.target.result);
                         req.onerror = e => reject(e);
                     });
@@ -3068,7 +3192,7 @@
                 
                 try {
                     const db = await new Promise((resolve, reject) => {
-                        const req = indexedDB.open('WaveForgeDB_V4', 3);
+                        const req = indexedDB.open('WaveForgeDB_V4', 4);
                         req.onsuccess = e => resolve(e.target.result);
                         req.onerror = e => reject(e);
                     });
@@ -3351,7 +3475,7 @@
                 // Query IndexedDB to count remaining chunks
                 try {
                     const db = await new Promise((resolve, reject) => {
-                        const req = indexedDB.open('WaveForgeDB_V4', 3);
+                        const req = indexedDB.open('WaveForgeDB_V4', 4);
                         req.onsuccess = e => resolve(e.target.result);
                         req.onerror = e => reject(e);
                     });
@@ -3596,7 +3720,7 @@
             // CRITICAL: Reset retry delays for all pending chunks to trigger immediate retry
             try {
                 const db = await new Promise((resolve, reject) => {
-                    const req = indexedDB.open('WaveForgeDB_V4', 3);
+                    const req = indexedDB.open('WaveForgeDB_V4', 4);
                     req.onsuccess = e => resolve(e.target.result);
                     req.onerror = e => reject(e);
                 });
@@ -3661,7 +3785,7 @@
 
         // --- 2. CRASH GUARD RAID SYSTEM ---
         const DB_NAME = 'WaveForgeDB_V4';
-        const DB_VERSION = 3;
+        const DB_VERSION = 4;
         const STORE_RECORDINGS = 'recordings';
         const STORE_RECOVERY = 'recovery_chunks';
         const STORE_UPLOAD_QUEUE = 'upload_queue';
@@ -3720,7 +3844,7 @@
                 
                 try {
                     const db = await new Promise((resolve, reject) => {
-                        const req = indexedDB.open('WaveForgeDB_V4', 3);
+                        const req = indexedDB.open('WaveForgeDB_V4', 4);
                         req.onsuccess = e => resolve(e.target.result);
                         req.onerror = e => reject(e);
                     });
@@ -3788,7 +3912,7 @@
                 while (Date.now() - startTime < maxWaitMs) {
                     try {
                         const db = await new Promise((resolve, reject) => {
-                            const req = indexedDB.open('WaveForgeDB_V4', 3);
+                            const req = indexedDB.open('WaveForgeDB_V4', 4);
                             req.onsuccess = e => resolve(e.target.result);
                             req.onerror = e => reject(e);
                         });
@@ -5405,6 +5529,30 @@
             document.getElementById('recordButton').addEventListener('click', startRecording);
             document.getElementById('pauseButton').addEventListener('click', pauseRecording);
             document.getElementById('stopButton').addEventListener('click', stopRecording);
+            
+            // Modal button event listeners (identisch für Info und Settings)
+            const infoButton = document.getElementById('infoBtn');
+            const settingsButton = document.getElementById('settingsBtn');
+
+            if (infoButton) {
+                infoButton.addEventListener('click', function(e) {
+                    if (e.currentTarget !== infoButton) return;
+                    e.stopImmediatePropagation();
+                    e.stopPropagation();
+                    e.preventDefault();
+                    openInfoModal();
+                }, {capture: true, passive: false});
+            }
+
+            if (settingsButton) {
+                settingsButton.addEventListener('click', function(e) {
+                    if (e.currentTarget !== settingsButton) return;
+                    e.stopImmediatePropagation();
+                    e.stopPropagation();
+                    e.preventDefault();
+                    openSettingsModal();
+                }, {capture: true, passive: false});
+            }
             ['LowShelf', 'Peaking', 'HighShelf', 'Gain'].forEach(t => {
                 document.getElementById(`input${t}`).addEventListener('input', (e) => {
                     getSliderValues('input');
@@ -5429,17 +5577,44 @@
             // Initialize live upload indicator
             LiveUploadIndicator.init();
 
-            // BITV 2.0: Keyboard accessibility - Escape key closes modals
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    if (modal.style.display === 'flex') closeSaveModal();
-                    else if (infoModal.style.display === 'flex') closeInfoModal();
-                    else if (document.getElementById('settingsModal')?.style.display === 'flex') closeSettingsModal();
-                    else if (document.getElementById('deleteModal')?.style.display === 'flex') closeDeleteModal();
-                    else if (document.getElementById('recoveryModal').style.display === 'flex') {
-                        // Recovery modal doesn't have close function, but we can discard
-                        CrashGuard.discardSession();
+            // Low-power mode: pause animations/audio when tab is hidden
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    stopVisualizer();
+                    if (isPlaying) {
+                        stopAudio(false, true); // stop immediately without fade
                     }
+                    if (audioContext && audioContext.state === 'running') {
+                        audioContext.suspend();
+                    }
+                } else {
+                    if (audioContext && audioContext.state === 'suspended' && (isRecording || isPlaying)) {
+                        audioContext.resume();
+                    }
+                }
+            });
+
+            // BITV 2.0: Keyboard accessibility - Escape key closes modals (defensive lookups)
+            document.addEventListener('keydown', (e) => {
+                if (e.key !== 'Escape') return;
+
+                const saveModal = document.getElementById('saveModal');
+                const infoModalEl = document.getElementById('infoModal');
+                const settingsModalEl = document.getElementById('settingsModal');
+                const deleteModalEl = document.getElementById('deleteModal');
+                const recoveryModalEl = document.getElementById('recoveryModal');
+
+                if (saveModal && saveModal.style.display === 'flex') {
+                    closeSaveModal();
+                } else if (infoModalEl && infoModalEl.style.display === 'flex') {
+                    closeInfoModal();
+                } else if (settingsModalEl && settingsModalEl.style.display === 'flex') {
+                    closeSettingsModal();
+                } else if (deleteModalEl && deleteModalEl.style.display === 'flex') {
+                    closeDeleteModal();
+                } else if (recoveryModalEl && recoveryModalEl.style.display === 'flex') {
+                    // Recovery modal doesn't have close function, but we can discard
+                    CrashGuard.discardSession();
                 }
             });
 
@@ -5834,12 +6009,23 @@
         };
 
         function openSettingsModal() {
-            lastFocusedElement = document.activeElement; // Save current focus
+            console.log('openSettingsModal called');
+            // Immer zuerst beide Modals schließen
+            closeInfoModal(true);      // true = force, keine Animation
+            closeSettingsModal(true);  // true = force, keine Animation
+
+            lastFocusedElement = document.activeElement;
             const modal = document.getElementById('settingsModal');
+            if (!modal) {
+                console.error('settingsModal not found');
+                return;
+            }
             modal.style.display = 'flex';
             modal.setAttribute('aria-hidden', 'false');
+            setTimeout(() => {
+                modal.classList.add('settings-modal-open');
+            }, 10);
 
-            // Load current settings
             const currentMethod = AppSettings.get('uploadMethod');
             const currentChunkSize = AppSettings.get('chunkSize');
             
@@ -5858,21 +6044,28 @@
                 }
             }
 
-            setTimeout(() => {
-                trapFocus(modal); // Enable focus trap
-                // Focus modal title
-                const modalTitle = modal.querySelector('#settingsModalTitle');
-                if (modalTitle) modalTitle.focus();
-            }, 10);
+            trapFocus(modal);
+            const modalTitle = modal.querySelector('#settingsModalTitle');
+            if (modalTitle) modalTitle.focus();
         }
 
         function closeSettingsModal() {
+            // Optionaler force-Parameter: sofort schließen ohne Animation
+            let force = false;
+            if (arguments.length > 0) force = arguments[0];
+            console.log('closeSettingsModal called', force);
             const modal = document.getElementById('settingsModal');
-            modal.style.display = 'none';
+            if (!modal) return;
+            modal.classList.remove('settings-modal-open');
             modal.setAttribute('aria-hidden', 'true');
-            // Hide custom chunk size input if visible
+            if (force) {
+                modal.style.display = 'none';
+            } else {
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 200);
+            }
             document.getElementById('customChunkSizeContainer').classList.add('hidden');
-            // Restore focus
             if (lastFocusedElement) {
                 lastFocusedElement.focus();
                 lastFocusedElement = null;

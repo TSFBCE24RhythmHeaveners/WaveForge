@@ -1,9 +1,9 @@
 // Service Worker Version - increment to force update
-const SW_VERSION = '2.3.3'; // Fixed syntax error (removed duplicate processUploads function)
+const SW_VERSION = '2.3.4'; // Force update after DB version bump
 console.log(`[SW] Service Worker version ${SW_VERSION} initializing...`);
 
 const DB_NAME = 'WaveForgeDB_V4';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_UPLOAD_QUEUE = 'upload_queue';
 
 // Retry Configuration

@@ -80,6 +80,19 @@ async def recording_complete(
     # Check for session in SHARDED storage (custom uploads from Service Worker)
     session_dir = UPLOAD_DIR / session_id
     temp_dir = session_dir / "temp"
+    completed_dir = session_dir / "completed"
+    output_file = completed_dir / file_name
+
+    # Fast path: if the file is already assembled, return success instead of erroring
+    if output_file.exists():
+        file_size = output_file.stat().st_size
+        return {
+            "status": "already_completed",
+            "message": "Recording already assembled",
+            "session_id": session_id,
+            "file_name": file_name,
+            "file_size_bytes": file_size
+        }
     
     if not temp_dir.exists():
         # Fallback: Check if session exists in TUS upload_sessions
