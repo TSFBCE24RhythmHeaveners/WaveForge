@@ -1860,8 +1860,10 @@
                 // Detect available features based on protocol
                 if (this.isHTTP) {
                     // Full feature set for HTTP(S)
-                    this.features.serviceWorker = 'serviceWorker' in navigator;
-                    this.features.backgroundSync = 'serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype;
+                    const hasSW = 'serviceWorker' in navigator;
+                    const hasSWRegistration = typeof ServiceWorkerRegistration !== 'undefined';
+                    this.features.serviceWorker = hasSW;
+                    this.features.backgroundSync = hasSW && hasSWRegistration && 'sync' in ServiceWorkerRegistration.prototype;
                     this.features.cloudUpload = true;
                     this.features.serverFetch = true;
                     console.log('🌐 HTTP Mode: All features enabled');
@@ -1943,6 +1945,8 @@
                 downloadBlob: true
             };
         }
+
+        const isCloudUploadEnabled = () => (ENV && ENV.cloudUpload !== false && location.protocol !== 'file:');
 
         // --- PERFORMANCE MONITOR (Track CPU-intensive operations) ---
         const PerformanceMonitor = {
@@ -2946,6 +2950,10 @@
                 }
             },
             startRetryLoop: function () {
+                if (!isCloudUploadEnabled()) {
+                    console.log('⏭️ Retry loop skipped (cloud upload disabled or file://)');
+                    return;
+                }
                 // Stop existing interval if running
                 if (this.retryIntervalId) {
                     clearInterval(this.retryIntervalId);
@@ -2991,7 +2999,7 @@
             },
             queueUpload: async function (id, blob, fileName, metadata = {}, sessionId = null) {
                 // CRITICAL: Block upload queue in file:// mode
-                if (ENV && ENV.cloudUpload === false) {
+                if (!isCloudUploadEnabled()) {
                     console.warn('⏭️ Upload queue disabled in offline mode');
                     showToast('Upload not available in offline mode - use DL button', false);
                     return;
@@ -3041,6 +3049,7 @@
                 };
             },
             triggerSync: function () {
+                if (!isCloudUploadEnabled()) return;
                 console.log('→ Attempting to trigger upload...');
                 if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
                     console.log('✓ Service Worker controller is active');
@@ -3250,7 +3259,7 @@
                 }
                 
                 // Register Background Sync if supported
-                if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+                if ('serviceWorker' in navigator && typeof ServiceWorkerRegistration !== 'undefined' && 'sync' in ServiceWorkerRegistration.prototype) {
                     console.log('✓ Background Sync API supported');
                 } else {
                     console.warn('⚠️ Background Sync API not supported - uploads will use fallback');
@@ -3469,6 +3478,12 @@
             onConnectionRestored: function() {
                 console.log('🌐 UploadCoordinator: Connection restored - resuming uploads');
                 exitLowPowerMode('upload coordinator online');
+
+                // Skip resume work when cloud uploads are disabled (e.g., file:// mode)
+                if (!isCloudUploadEnabled()) {
+                    console.log('🌐 UploadCoordinator: Cloud upload disabled, skipping resume');
+                    return;
+                }
                 
                 // Resume all paused uploads
                 let hasResumed = false;
@@ -3583,7 +3598,7 @@
             },
             
             registerBackgroundSync: function() {
-                if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+                if ('serviceWorker' in navigator && typeof ServiceWorkerRegistration !== 'undefined' && 'sync' in ServiceWorkerRegistration.prototype) {
                     navigator.serviceWorker.ready.then(registration => {
                         return registration.sync.register('upload-chunks');
                     }).then(() => {
@@ -3780,6 +3795,10 @@
 
         // Monitor connection status and auto-resume uploads
         window.addEventListener('online', async () => {
+            if (!isCloudUploadEnabled()) {
+                setStatus('Offline-Modus: Cloud-Upload deaktiviert.', 'info');
+                return;
+            }
             console.log('🌐 Connection restored - resetting retry delays for immediate upload');
             UploadManager.setUploadStatus('idle');
             exitLowPowerMode('network online');
@@ -6149,6 +6168,10 @@
             },
             
             async loadFromServer() {
+                // Skip remote config when running from file:// to avoid fetch errors
+                if (location.protocol === 'file:' || (ENV && ENV.serverFetch === false)) {
+                    return this.defaults;
+                }
                 try {
                     const response = await fetch('/api/config');
                     if (response.ok) {
