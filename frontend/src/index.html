@@ -8,7 +8,7 @@
         content="WaveForge DAW - Professionelle Audio-Aufnahmesoftware mit CrashGuard und Cloud-Synchronisation">
     <title>WaveForge DAW - Preview Edition</title>
     <!-- Don't remove relative path and dot ./ for offline file usage -->
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="../public/favicon.svg">
     <link rel="manifest" href="./manifest.json">
     <script src="./tailwind.min.js"></script>
     <link href="./fonts.css" rel="stylesheet">
@@ -1948,6 +1948,14 @@
 
         const isCloudUploadEnabled = () => (ENV && ENV.cloudUpload !== false && location.protocol !== 'file:');
 
+        // In file:// mode, remove manifest link to avoid CORS errors
+        if (location.protocol === 'file:') {
+            const manifestLink = document.querySelector('link[rel="manifest"]');
+            if (manifestLink) {
+                manifestLink.parentElement.removeChild(manifestLink);
+            }
+        }
+
         // --- PERFORMANCE MONITOR (Track CPU-intensive operations) ---
         const PerformanceMonitor = {
             activeIntervals: new Set(),
@@ -3796,7 +3804,7 @@
         // Monitor connection status and auto-resume uploads
         window.addEventListener('online', async () => {
             if (!isCloudUploadEnabled()) {
-                setStatus('Offline-Modus: Cloud-Upload deaktiviert.', 'info');
+                showToast('Offline-Modus: Cloud-Upload deaktiviert.', false);
                 return;
             }
             console.log('🌐 Connection restored - resetting retry delays for immediate upload');
@@ -3888,6 +3896,7 @@
 
         let db = null;
         let currentSessionId = null;
+    let dbReinitAttempted = false;
 
         const CrashGuard = {
             init: async function () {
@@ -4127,8 +4136,14 @@
                 console.log(`📥 Queuing recording complete signal for session ${sessionId}`);
                 
                 try {
+                    // Skip when cloud uploads are disabled (file:// offline mode)
+                    if (!isCloudUploadEnabled()) {
+                        console.log('📥 Cloud upload disabled, skipping assembly queue');
+                        return;
+                    }
+
                     if (!navigator.serviceWorker.controller) {
-                        console.error('No service worker controller available');
+                        console.warn('No service worker controller available; will retry when online with SW');
                         return;
                     }
                     
@@ -4483,6 +4498,32 @@
                         console.log('✓ IndexedDB opened successfully');
                         console.log('→ Available stores:', Array.from(db.objectStoreNames));
                         console.log('→ DB version:', db.version);
+
+                        // Ensure all required stores exist; if not, recreate DB once
+                        const requiredStores = [STORE_RECORDINGS, STORE_RECOVERY, STORE_UPLOAD_QUEUE];
+                        const missingStores = requiredStores.filter(name => !db.objectStoreNames.contains(name));
+                        if (missingStores.length > 0) {
+                            console.warn('⚠️ Missing object stores detected:', missingStores);
+                            db.close();
+                            if (dbReinitAttempted) {
+                                showToast('Database schema missing stores. Please reload.', true);
+                                reject(new Error('Missing object stores'));
+                                return;
+                            }
+                            dbReinitAttempted = true;
+                            const deleteReq = indexedDB.deleteDatabase(DB_NAME);
+                            deleteReq.onsuccess = () => {
+                                console.log('🧹 Deleted DB to recreate schema');
+                                db = null;
+                                initDB().then(resolve).catch(reject);
+                            };
+                            deleteReq.onerror = (errEvent) => {
+                                console.error('❌ Failed to delete DB for recreation:', errEvent);
+                                reject(errEvent.target?.error || new Error('DB delete failed'));
+                            };
+                            return;
+                        }
+
                         CrashGuard.init();
                         loadTracksFromDB();
                         UploadManager.register();
@@ -4670,7 +4711,7 @@
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
+                analyser.fftSize = 64; // Even fewer bins to reduce draw workload
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 initVisualizer();
             }
@@ -4734,8 +4775,8 @@
         }
 
         let visualizerAnimationId = null; // Track animation frame ID
-        let visualizerTargetFps = 30; // Desired FPS for visualizer
-        let visualizerBaselineFps = 30; // Baseline FPS that can be reduced for power saving
+        let visualizerTargetFps = 16; // Lower default FPS for visualizer
+        let visualizerBaselineFps = 16; // Baseline FPS that can be reduced for power saving
         let visualizerLastFrameTime = 0;
         let visualizerSlowTimer = null;
 
@@ -4751,7 +4792,7 @@
             visualizerSlowTimer = setTimeout(() => {
                 visualizerBaselineFps = 6; // Long-run idle FPS
                 setVisualizerFps(visualizerBaselineFps, 'long-run throttle');
-            }, 60000); // Slow down after 60s to save CPU
+            }, 12000); // Slow down sooner to save CPU
         }
 
         function attachVisualizerHoverBoost() {
@@ -4800,7 +4841,7 @@
         function startVisualizer() {
             if (visualizerAnimationId === null) {
                 visualizerActive = true;
-                visualizerBaselineFps = 30;
+                visualizerBaselineFps = 16;
                 setVisualizerFps(visualizerBaselineFps, 'start');
                 visualizerLastFrameTime = 0;
                 scheduleVisualizerThrottle();
@@ -4822,6 +4863,15 @@
                 console.log('✓ Visualizer animation stopped (CPU-friendly)');
             }
         }
+
+        // Pause visualizer when tab is hidden to save CPU
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopVisualizer();
+            } else if (isRecording) {
+                startVisualizer();
+            }
+        });
 
         function encodeWAV(samples, sampleRate) {
             const buffer = new ArrayBuffer(44 + samples.length * 2);
@@ -4848,6 +4898,17 @@
 
         // Recording
         async function startRecording() {
+            // Ensure database is ready before recording to prevent IDB errors
+            if (!db) {
+                try {
+                    await initDB();
+                } catch (err) {
+                    console.error('❌ Cannot start recording - DB not ready:', err);
+                    showToast('Database not ready. Please reload.', true);
+                    return;
+                }
+            }
+
             initAudioEngine();
             // FIXED: Disable Playback UI & Stop Audio
             document.getElementById('playerDock').classList.remove('active');
@@ -6406,8 +6467,8 @@
     </script>
     
     <!-- TUS Upload Client (for main thread uploads) -->
-    <script src="/tus.min.js"></script>
-    <script src="/tus-upload-manager.js"></script>
+    <script src="./tus.min.js"></script>
+    <script src="./tus-upload-manager.js"></script>
 </body>
 
 </html>
